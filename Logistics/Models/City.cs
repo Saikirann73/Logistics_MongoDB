@@ -10,7 +10,7 @@ namespace Logistics.Models
     public string Name { get; set; }
 
     [BsonElement(CitiesConstants.Position)]
-    public List<string> Location { get; set; }
+    public List<float> Location { get; set; }
 
     [BsonElement(CitiesConstants.Country)]
     public string Country { get; set; }

@@ -41,7 +41,7 @@ namespace Logistics.DAL
     public async Task<Plane> GetPlaneById(string id)
     {
       var filter = new BsonDocument();
-      filter["_id"] = id;
+      filter[CommonConstants.UnderScoreId] = id;
       try
       {
         var cursor = await this.planesCollection.FindAsync(filter);
@@ -70,13 +70,8 @@ namespace Logistics.DAL
         var update = Builders<BsonDocument>.Update
                                         .Set(PlanesConstants.CurrentLocation, location)
                                         .Set(PlanesConstants.Heading, heading);
-        var options = new FindOneAndUpdateOptions<BsonDocument>
-        {
-          ReturnDocument = ReturnDocument.After
-        };
-        var updatedPlane = await this.planesCollection.FindOneAndUpdateAsync(filter, update, options);
-        var planeModel = BsonSerializer.Deserialize<Plane>(updatedPlane);
-        result = true;
+        var updatedPlaneResult = await this.planesCollection.UpdateOneAsync(filter, update);
+        result = updatedPlaneResult.IsAcknowledged;
       }
       catch (MongoException ex)
       {
@@ -87,7 +82,7 @@ namespace Logistics.DAL
       return result;
     }
 
-    public async Task<bool> UpdatePlaneLocationAndLanding(string id, List<string> location, float heading, string landed)
+    public async Task<bool> UpdatePlaneLocationAndLanding(string id, List<string> location, float heading, string city)
     {
       var result = false;
       try
@@ -96,14 +91,9 @@ namespace Logistics.DAL
         var update = Builders<BsonDocument>.Update
                              .Set(PlanesConstants.CurrentLocation, location)
                              .Set(PlanesConstants.Heading, heading)
-                             .Set(PlanesConstants.Landed, landed);
-        var options = new FindOneAndUpdateOptions<BsonDocument>
-        {
-          ReturnDocument = ReturnDocument.After
-        };
-        var updatedPlane = await this.planesCollection.FindOneAndUpdateAsync(filter, update, options);
-        var planeModel = BsonSerializer.Deserialize<Plane>(updatedPlane);
-        result = true;
+                             .Set(PlanesConstants.Landed, city);
+        var updatedPlaneResult = await this.planesCollection.UpdateOneAsync(filter, update);
+        result = updatedPlaneResult.IsAcknowledged;
       }
       catch (MongoException ex)
       {
@@ -114,7 +104,64 @@ namespace Logistics.DAL
       return result;
     }
 
-    public string getLastError()
+    public async Task<bool> AddPlaneRoute(string id, string city)
+    {
+      var result = false;
+      try
+      {
+        var filter = Builders<BsonDocument>.Filter.Eq(CommonConstants.UnderScoreId, id);
+        var update = Builders<BsonDocument>.Update
+                             .Push(PlanesConstants.Route, city);
+        var updatedPlaneResult = await this.planesCollection.UpdateOneAsync(filter, update);
+        result = updatedPlaneResult.IsAcknowledged;
+      }
+      catch (MongoException ex)
+      {
+        lastError = ex.ToString();
+        result = false;
+      }
+      return result;
+    }
+
+    public async Task<bool> ReplacePlaneRoutes(string id, string city)
+    {
+      var result = false;
+      try
+      {
+        var filter = Builders<BsonDocument>.Filter.Eq(CommonConstants.UnderScoreId, id);
+        var update = Builders<BsonDocument>.Update
+                             .Set(PlanesConstants.Route, new List<string> { city });
+        var updatedPlaneResult = await this.planesCollection.UpdateOneAsync(filter, update);
+        result = updatedPlaneResult.IsAcknowledged;
+      }
+      catch (MongoException ex)
+      {
+        lastError = ex.ToString();
+        result = false;
+      }
+      return result;
+    }
+
+    public async Task<bool> RemoveFirstPlaneRoute(string id)
+    {
+      var result = false;
+      try
+      {
+        var filter = Builders<BsonDocument>.Filter.Eq(CommonConstants.UnderScoreId, id);
+        var update = Builders<BsonDocument>.Update
+                             .PopFirst(PlanesConstants.Route);
+        var updatedPlaneResult = await this.planesCollection.UpdateOneAsync(filter, update);
+        result = updatedPlaneResult.IsAcknowledged;
+      }
+      catch (MongoException ex)
+      {
+        lastError = ex.ToString();
+        result = false;
+      }
+      return result;
+    }
+
+    public string GetLastError()
     {
       return lastError;
     }

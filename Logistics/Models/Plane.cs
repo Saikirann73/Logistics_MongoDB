@@ -7,13 +7,10 @@ namespace Logistics.Models
   public class Plane
   {
     [BsonElement(CommonConstants.UnderScoreId)]
-    public string Name { get; set; }
+    public string Callsign { get; set; }
 
     [BsonElement(PlanesConstants.CurrentLocation)]
-    public List<string> CurrentLocation { get; set; }
-
-    [BsonElement(PlanesConstants.Callsign)]
-    public string Callsign { get; set; }
+    public List<float> CurrentLocation { get; set; }
 
     [BsonElement(PlanesConstants.Heading)]
     public decimal Heading { get; set; }

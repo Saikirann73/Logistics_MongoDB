@@ -2,10 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Logistics.DAL.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-
-// For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
 namespace Logistics.Controllers
 {
@@ -13,12 +12,15 @@ namespace Logistics.Controllers
   [Route("cargo")]
   public class CargoController : Controller
   {
-
     private readonly ILogger<CargoController> _logger;
+    private readonly ICargoDAL cargoDAL;
+    private readonly ICitiesDAL citiesDAL;
 
-    public CargoController(ILogger<CargoController> logger)
+    public CargoController(ILogger<CargoController> logger, ICargoDAL cargoDAL, ICitiesDAL citiesDAL)
     {
-      _logger = logger;
+      this._logger = logger;
+      this.cargoDAL = cargoDAL;
+      this.citiesDAL = citiesDAL;
     }
 
     /// <summary>
@@ -27,9 +29,21 @@ namespace Logistics.Controllers
     /// <param name="location"></param>
     /// <returns></returns>
     [HttpGet("location/{location}")]
-    public IActionResult GetCargoAtLocation(string location)
+    public async Task<IActionResult> GetCargoAtLocation(string location)
     {
-      return new OkResult();
+      if (string.IsNullOrEmpty(location))
+      {
+        return new BadRequestObjectResult("Location is invalid");
+      }
+
+      // var cityObtained = await this.citiesDAL.GetCityById(location);
+      // if (cityObtained == null)
+      // {
+      //   return new BadRequestObjectResult("Found invalid city");
+      // }
+
+      var cargos = await this.cargoDAL.GetAllCargosAtLocation(location);
+      return new OkObjectResult(cargos);
     }
 
     /// <summary>
@@ -38,9 +52,27 @@ namespace Logistics.Controllers
     /// <param name="location"></param>
     /// <returns></returns>
     [HttpPost("{source}/to/{destination}")]
-    public IActionResult CreateCargo(string source, string destination)
+    public async Task<IActionResult> CreateCargo(string source, string destination)
     {
-      return new OkResult();
+      if (string.IsNullOrEmpty(source) || string.IsNullOrEmpty(destination))
+      {
+        return new BadRequestObjectResult("Source or Destination is invalid");
+      }
+
+      var sourceCityObtained = await this.citiesDAL.GetCityById(source);
+      if (sourceCityObtained == null)
+      {
+        return new NotFoundObjectResult("Source city not found");
+      }
+
+      var targetCityObtained = await this.citiesDAL.GetCityById(destination);
+      if (targetCityObtained == null)
+      {
+        return new NotFoundObjectResult("Destination city not found");
+      }
+
+      var newCargo = await this.cargoDAL.CreateCargo(source, destination);
+      return new OkObjectResult(newCargo);
     }
 
     /// <summary>
@@ -48,9 +80,15 @@ namespace Logistics.Controllers
     /// </summary>
     /// <returns></returns>
     [HttpPut("{cargoId}/delivered")]
-    public IActionResult CargoDelivered(string cargoId)
+    public async Task<IActionResult> CargoDelivered(string cargoId)
     {
-      return new OkResult();
+      var result = await this.cargoDAL.UpdateCargoStatus(cargoId, "delivered");
+      if (!result)
+      {
+        return new BadRequestObjectResult("Invalid CargoId");
+      }
+
+      return new JsonResult(result);
     }
 
     /// <summary>
@@ -58,9 +96,15 @@ namespace Logistics.Controllers
     /// </summary>
     /// <returns></returns>
     [HttpPut("{cargoId}/courier/{courierId}")]
-    public IActionResult CargoAssignCourier(string cargoId, string courierId)
+    public async Task<IActionResult> CargoAssignCourier(string cargoId, string courierId)
     {
-      return new OkResult();
+      var result = await this.cargoDAL.UpdateCargoCourier(cargoId, courierId);
+      if (!result)
+      {
+        return new BadRequestObjectResult("Invalid CargoId");
+      }
+
+      return new JsonResult(result);
     }
 
     /// <summary>
@@ -70,9 +114,15 @@ namespace Logistics.Controllers
     /// <param name="locationId"></param>
     /// <returns></returns>
     [HttpPut("{cargoId}/location/{locationId}")]
-    public IActionResult CargoMove(string cargoId, string locationId)
+    public async Task<IActionResult> CargoMove(string cargoId, string locationId)
     {
-      return new OkResult();
+      var result = await this.cargoDAL.UpdateCargoLocation(cargoId, locationId);
+      if (!result)
+      {
+        return new BadRequestObjectResult("Invalid CargoId");
+      }
+
+      return new JsonResult(result);
     }
 
     /// <summary>
@@ -81,9 +131,15 @@ namespace Logistics.Controllers
     /// <param name="cargoId"></param>
     /// <returns></returns>
     [HttpDelete("{cargoId}/courier")]
-    public IActionResult CargoUnsetCourier(string cargoId)
+    public async Task<IActionResult> CargoUnsetCourier(string cargoId)
     {
-      return new OkResult();
+      var result = await this.cargoDAL.RemoveCourier(cargoId);
+      if (!result)
+      {
+        return new BadRequestObjectResult("Invalid CargoId");
+      }
+
+      return new JsonResult(result);
     }
   }
 }

@@ -6,8 +6,6 @@ using Logistics.DAL.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
-// For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
-
 namespace Logistics.Controllers
 {
   [ApiController]
@@ -16,10 +14,13 @@ namespace Logistics.Controllers
   {
     private readonly ILogger<PlanesController> _logger;
     private readonly IPlanesDAL planesDAL;
-    public PlanesController(ILogger<PlanesController> logger, IPlanesDAL planesDAL)
+    private readonly ICitiesDAL citiesDAL;
+
+    public PlanesController(ILogger<PlanesController> logger, IPlanesDAL planesDAL, ICitiesDAL citiesDAL)
     {
       this._logger = logger;
       this.planesDAL = planesDAL;
+      this.citiesDAL = citiesDAL;
     }
 
     /// <summary>
@@ -56,10 +57,10 @@ namespace Logistics.Controllers
     /// <param name="latitude"></param>
     /// <param name="longitude"></param>
     /// <param name="heading"></param>
-    /// <param name="landed"></param>
+    /// <param name="city"></param>
     /// <returns></returns>
-    [HttpPut("{id}/location/{location}/{heading}/{landed}")]
-    public async Task<IActionResult> UpdatePlaneLocationAndLanding(string id, string location, float heading, string landed)
+    [HttpPut("{id}/location/{location}/{heading}/{city}")]
+    public async Task<IActionResult> UpdatePlaneLocationAndLanding(string id, string location, float heading, string city)
     {
       if (string.IsNullOrEmpty(location))
       {
@@ -70,14 +71,19 @@ namespace Logistics.Controllers
       {
         return new BadRequestObjectResult("Location information is invalid");
       }
+      var cityObtained = await this.citiesDAL.GetCityById(city);
+      if (cityObtained == null)
+      {
+        return new BadRequestObjectResult("Found invalid city");
+      }
 
-      var result = await this.planesDAL.UpdatePlaneLocationAndLanding(id, locations.ToList(), heading, landed);
+      var result = await this.planesDAL.UpdatePlaneLocationAndLanding(id, locations.ToList(), heading, city);
       if (!result)
       {
-        return new BadRequestObjectResult(this.planesDAL.getLastError());
+        return new BadRequestObjectResult(this.planesDAL.GetLastError());
       }
-      
-       return new JsonResult(result);
+
+      return new JsonResult(result);
     }
 
     /// <summary>
@@ -103,43 +109,71 @@ namespace Logistics.Controllers
       var result = await this.planesDAL.UpdatePlaneLocation(id, locations.ToList(), heading);
       if (!result)
       {
-        return new BadRequestObjectResult(this.planesDAL.getLastError());
+        return new BadRequestObjectResult(this.planesDAL.GetLastError());
       }
 
       return new JsonResult(result);
     }
 
     /// <summary>
+    /// Add a city to a Plane's Route
+    /// </summary>
+    /// <param name="city"></param>
+    /// <returns></returns>
+    [HttpPost("{id}/route/{city}")]
+    public async Task<IActionResult> AddPlaneRoute(string id, string city)
+    {
+      var cityObtained = await this.citiesDAL.GetCityById(city);
+      if (cityObtained == null)
+      {
+        return new BadRequestObjectResult("Found invalid city");
+      }
+
+      var result = await this.planesDAL.AddPlaneRoute(id, city);
+      if (!result)
+      {
+        return new BadRequestObjectResult(this.planesDAL.GetLastError());
+      }
+      return new JsonResult(result);
+    }
+
+    /// <summary>
     /// Replace a Plane's Route with a single city
     /// </summary>
-    /// <param name="location"></param>
+    /// <param name="city"></param>
     /// <returns></returns>
-    [HttpPut("{id}/route/{location}")]
-    public async Task<IActionResult> UpdatePlaneRoute(string location)
+    [HttpPut("{id}/route/{city}")]
+    public async Task<IActionResult> UpdatePlaneRoute(string id, string city)
     {
-      return new OkResult();
+      var cityObtained = await this.citiesDAL.GetCityById(city);
+      if (cityObtained == null)
+      {
+        return new BadRequestObjectResult("Found invalid city");
+      }
+
+      var result = await this.planesDAL.ReplacePlaneRoutes(id, city);
+      if (!result)
+      {
+        return new BadRequestObjectResult(this.planesDAL.GetLastError());
+      }
+
+      return new JsonResult(result);
     }
 
     /// <summary>
-    /// Add a city to a Plane's Route
+    /// Remove a city to a Plane's Route
     /// </summary>
-    /// <param name="location"></param>
-    /// <returns></returns>
-    [HttpPost("{id}/route/{location}")]
-    public async Task<IActionResult> AddPlaneRoute(string location)
-    {
-      return new OkResult();
-    }
-
-    /// <summary>
-    /// Add a city to a Plane's Route
-    /// </summary>
-    /// <param name="location"></param>
     /// <returns></returns>
     [HttpDelete("{id}/route/destination")]
-    public async Task<IActionResult> RemoveFirstPlaneRoute(string location)
+    public async Task<IActionResult> RemoveFirstPlaneRoute(string id)
     {
-      return new OkResult();
+      var result = await this.planesDAL.RemoveFirstPlaneRoute(id);
+      if (!result)
+      {
+        return new BadRequestObjectResult(this.planesDAL.GetLastError());
+      }
+
+      return new JsonResult(result);
     }
   }
 }
