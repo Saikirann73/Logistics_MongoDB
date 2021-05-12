@@ -9,7 +9,7 @@ namespace Logistics.DAL.Interfaces
   {
     Task<Cargo> CreateCargo(string location, string destination);
     Task<List<Cargo>> GetAllCargosAtLocation(string location);
-    Task<Cargo> GetCargoById(ObjectId id);
+    Task<Cargo> GetCargoById(string id);
     string GetLastError();
     Task<bool> RemoveCourier(string cargoId);
     Task<bool> UpdateCargoCourier(string cargoId, string courier);

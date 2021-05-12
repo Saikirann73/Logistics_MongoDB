@@ -31,7 +31,12 @@ namespace Logistics
     {
       services.AddControllers();
       services.AddSwaggerGen();
-
+      services.AddCors(o => o.AddPolicy("MyPolicy", builder =>
+      {
+        builder.AllowAnyOrigin()
+               .AllowAnyMethod()
+               .AllowAnyHeader();
+      }));
       services.AddScoped<IMongoClient>(x => { return new MongoClient(connectionString); });
       services.AddScoped<ICitiesDAL, CitiesDAL>();
       services.AddScoped<IPlanesDAL, PlanesDAL>();
@@ -55,13 +60,13 @@ namespace Logistics
       {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "My API V1");
       });
-
+      app.UseCors("MyPolicy");
       app.UseHttpsRedirection();
 
       app.UseRouting();
 
       app.UseAuthorization();
-
+     
       app.UseEndpoints(endpoints =>
       {
         endpoints.MapControllers();

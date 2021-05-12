@@ -28,7 +28,8 @@ namespace Logistics.DAL
     {
       var cargos = new List<Cargo>();
       var builder = Builders<BsonDocument>.Filter;
-      var filter = builder.Ne(CargoConstants.Status, CargoConstants.Delivered) & builder.Eq(CargoConstants.Location, location);
+      var filter = builder.Ne(CargoConstants.Status, CargoConstants.Delivered) &
+                   builder.Or(builder.Eq(CargoConstants.Location, location), builder.Eq(CargoConstants.Courier, location));
       try
       {
         var cursor = await this.cargoCollection.FindAsync(filter);
@@ -48,10 +49,10 @@ namespace Logistics.DAL
       return cargos;
     }
 
-    public async Task<Cargo> GetCargoById(ObjectId id)
+    public async Task<Cargo> GetCargoById(string id)
     {
       var filter = new BsonDocument();
-      filter[CommonConstants.UnderScoreId] = id;
+      filter[CommonConstants.UnderScoreId] = new ObjectId(id);
       try
       {
         var cursor = await this.cargoCollection.FindAsync(filter);
@@ -78,11 +79,11 @@ namespace Logistics.DAL
          {CommonConstants.UnderScoreId, id},
          {CargoConstants.Location,  location},
          {CargoConstants.Destination,  destination},
-         {CargoConstants.Status, "in progress"},
+         {CargoConstants.Status, CargoConstants.InProgress},
          {CargoConstants.Received, new BsonDateTime(DateTime.Now)}
        };
       await this.cargoCollection.InsertOneAsync(cargo);
-      var newCargo = await this.GetCargoById(cargo[CommonConstants.UnderScoreId].AsObjectId);
+      var newCargo = await this.GetCargoById(cargo[CommonConstants.UnderScoreId].ToString());
       return newCargo;
     }
 
@@ -93,7 +94,8 @@ namespace Logistics.DAL
       {
         var filter = Builders<BsonDocument>.Filter.Eq(CommonConstants.UnderScoreId, new ObjectId(cargoId));
         var update = Builders<BsonDocument>.Update
-                             .Set(CargoConstants.Status, status);
+                             .Set(CargoConstants.Status, status)
+                             .Set(CargoConstants.DeliveredAt, new BsonDateTime(DateTime.Now));
         var updatedCargoResult = await this.cargoCollection.UpdateOneAsync(filter, update);
         result = updatedCargoResult.IsAcknowledged;
       }

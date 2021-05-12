@@ -111,7 +111,7 @@ namespace Logistics.DAL
       {
         var filter = Builders<BsonDocument>.Filter.Eq(CommonConstants.UnderScoreId, id);
         var update = Builders<BsonDocument>.Update
-                             .Push(PlanesConstants.Route, city);
+                             .AddToSet(PlanesConstants.Route, city);
         var updatedPlaneResult = await this.planesCollection.UpdateOneAsync(filter, update);
         result = updatedPlaneResult.IsAcknowledged;
       }
@@ -147,6 +147,7 @@ namespace Logistics.DAL
       var result = false;
       try
       {
+        // Todo: if you don't check it's landed there you could end up with a plane circling forever!
         var filter = Builders<BsonDocument>.Filter.Eq(CommonConstants.UnderScoreId, id);
         var update = Builders<BsonDocument>.Update
                              .PopFirst(PlanesConstants.Route);

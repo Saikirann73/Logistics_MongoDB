@@ -16,10 +16,13 @@ namespace Logistics.Controllers
     private readonly ICargoDAL cargoDAL;
     private readonly ICitiesDAL citiesDAL;
 
-    public CargoController(ILogger<CargoController> logger, ICargoDAL cargoDAL, ICitiesDAL citiesDAL)
+    private readonly IPlanesDAL planesDAL;
+
+    public CargoController(ILogger<CargoController> logger, ICargoDAL cargoDAL, IPlanesDAL planesDAL, ICitiesDAL citiesDAL)
     {
       this._logger = logger;
       this.cargoDAL = cargoDAL;
+      this.planesDAL = planesDAL;
       this.citiesDAL = citiesDAL;
     }
 
@@ -35,12 +38,6 @@ namespace Logistics.Controllers
       {
         return new BadRequestObjectResult("Location is invalid");
       }
-
-      // var cityObtained = await this.citiesDAL.GetCityById(location);
-      // if (cityObtained == null)
-      // {
-      //   return new BadRequestObjectResult("Found invalid city");
-      // }
 
       var cargos = await this.cargoDAL.GetAllCargosAtLocation(location);
       return new OkObjectResult(cargos);
