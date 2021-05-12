@@ -34,6 +34,7 @@ namespace Logistics
       
             services.AddScoped<IMongoClient>(x => { return new MongoClient(connectionString); });
             services.AddScoped<ICitiesDAL, CitiesDAL>();
+            services.AddScoped<IPlanesDAL, PlanesDAL>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

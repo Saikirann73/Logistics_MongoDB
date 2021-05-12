@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Logistics.Constants;
 using Logistics.DAL.Interfaces;
 using Logistics.Models;
 using MongoDB.Bson;
@@ -9,33 +10,113 @@ using MongoDB.Driver;
 
 namespace Logistics.DAL
 {
-  public class PlanesDAL
+  public class PlanesDAL : IPlanesDAL
   {
-    private const string collectionName = "planes";
-    private const string database = "logistics";
     private readonly IMongoClient mongoClient;
     private readonly IMongoDatabase mongodataBase;
     private readonly IMongoCollection<BsonDocument> planesCollection;
+    private string lastError;
 
     public PlanesDAL(IMongoClient mongoClient)
     {
       this.mongoClient = mongoClient;
-      this.mongodataBase = mongoClient.GetDatabase(database);
-      this.planesCollection = this.mongodataBase.GetCollection<BsonDocument>(collectionName);
+      this.mongodataBase = mongoClient.GetDatabase(CommonConstants.Database);
+      this.planesCollection = this.mongodataBase.GetCollection<BsonDocument>(PlanesConstants.CollectionName);
     }
 
-    public async Task<List<City>> GetCities()
+    public async Task<List<Plane>> GetPlanes()
     {
-      var cityDtosCursor = await this.planesCollection.FindAsync(new BsonDocument());
-      var cityDtos = cityDtosCursor.ToList();
-      var cities = new List<City>();
-      foreach (var cityDto in cityDtos)
+      var planeDtosCursor = await this.planesCollection.FindAsync(new BsonDocument());
+      var planeDtos = planeDtosCursor.ToList();
+      var planes = new List<Plane>();
+      foreach (var planeDto in planeDtos)
       {
-        var cityModel = BsonSerializer.Deserialize<City>(cityDto);
-        cities.Add(cityModel);
+        var planeModel = BsonSerializer.Deserialize<Plane>(planeDto);
+        planes.Add(planeModel);
       }
 
-      return cities;
+      return planes;
+    }
+
+    public async Task<Plane> GetPlaneById(string id)
+    {
+      var filter = new BsonDocument();
+      filter["_id"] = id;
+      try
+      {
+        var cursor = await this.planesCollection.FindAsync(filter);
+        var planes = cursor.ToList();
+        if (planes.Any())
+        {
+          var planeModel = BsonSerializer.Deserialize<Plane>(planes.FirstOrDefault());
+          return planeModel;
+        }
+
+      }
+      catch (MongoException ex)
+      {
+        lastError = ex.ToString();
+      }
+
+      return null;
+    }
+
+    public async Task<bool> UpdatePlaneLocation(string id, List<string> location, float heading)
+    {
+      var result = false;
+      try
+      {
+        var filter = Builders<BsonDocument>.Filter.Eq(CommonConstants.UnderScoreId, id);
+        var update = Builders<BsonDocument>.Update
+                                        .Set(PlanesConstants.CurrentLocation, location)
+                                        .Set(PlanesConstants.Heading, heading);
+        var options = new FindOneAndUpdateOptions<BsonDocument>
+        {
+          ReturnDocument = ReturnDocument.After
+        };
+        var updatedPlane = await this.planesCollection.FindOneAndUpdateAsync(filter, update, options);
+        var planeModel = BsonSerializer.Deserialize<Plane>(updatedPlane);
+        result = true;
+      }
+      catch (MongoException ex)
+      {
+        lastError = ex.ToString();
+        result = false;
+      }
+
+      return result;
+    }
+
+    public async Task<bool> UpdatePlaneLocationAndLanding(string id, List<string> location, float heading, string landed)
+    {
+      var result = false;
+      try
+      {
+        var filter = Builders<BsonDocument>.Filter.Eq(CommonConstants.UnderScoreId, id);
+        var update = Builders<BsonDocument>.Update
+                             .Set(PlanesConstants.CurrentLocation, location)
+                             .Set(PlanesConstants.Heading, heading)
+                             .Set(PlanesConstants.Landed, landed);
+        var options = new FindOneAndUpdateOptions<BsonDocument>
+        {
+          ReturnDocument = ReturnDocument.After
+        };
+        var updatedPlane = await this.planesCollection.FindOneAndUpdateAsync(filter, update, options);
+        var planeModel = BsonSerializer.Deserialize<Plane>(updatedPlane);
+        result = true;
+      }
+      catch (MongoException ex)
+      {
+        lastError = ex.ToString();
+        result = false;
+      }
+
+      return result;
+    }
+
+    public string getLastError()
+    {
+      return lastError;
     }
   }
 }

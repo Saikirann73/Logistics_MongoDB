@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Logistics.Constants;
 using Logistics.DAL.Interfaces;
 using Logistics.Models;
 using MongoDB.Bson;
@@ -11,8 +12,6 @@ namespace Logistics.DAL
 {
   public class CitiesDAL : ICitiesDAL
   {
-    private const string collectionName = "cities";
-    private const string database = "logistics";
     private readonly IMongoClient mongoClient;
     private readonly IMongoDatabase mongodataBase;
     private readonly IMongoCollection<BsonDocument> citiesCollection;
@@ -20,8 +19,8 @@ namespace Logistics.DAL
     public CitiesDAL(IMongoClient mongoClient)
     {
       this.mongoClient = mongoClient;
-      this.mongodataBase = mongoClient.GetDatabase(database);
-      this.citiesCollection = this.mongodataBase.GetCollection<BsonDocument>(collectionName);
+      this.mongodataBase = mongoClient.GetDatabase(CommonConstants.Database);
+      this.citiesCollection = this.mongodataBase.GetCollection<BsonDocument>(CitiesConstants.CollectionName);
     }
 
     public async Task<List<City>> GetCities()
@@ -41,7 +40,7 @@ namespace Logistics.DAL
     public async Task<City> GetCityById(string id)
     {
       var filter = new BsonDocument();
-      filter["_id"] = id;
+      filter[CommonConstants.UnderScoreId] = id;
       try
       {
         var cursor = await this.citiesCollection.FindAsync(filter);

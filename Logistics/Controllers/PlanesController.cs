@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Logistics.DAL.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
@@ -14,10 +15,11 @@ namespace Logistics.Controllers
   public class PlanesController : Controller
   {
     private readonly ILogger<PlanesController> _logger;
-
-    public PlanesController(ILogger<PlanesController> logger)
+    private readonly IPlanesDAL planesDAL;
+    public PlanesController(ILogger<PlanesController> logger, IPlanesDAL planesDAL)
     {
-      _logger = logger;
+      this._logger = logger;
+      this.planesDAL = planesDAL;
     }
 
     /// <summary>
@@ -25,9 +27,10 @@ namespace Logistics.Controllers
     /// </summary>
     /// <returns></returns>
     [HttpGet]
-    public IActionResult GetPlanes()
+    public async Task<IActionResult> GetPlanes()
     {
-      return new OkResult();
+      var planes = await this.planesDAL.GetPlanes();
+      return new OkObjectResult(planes);
     }
 
     /// <summary>
@@ -36,9 +39,15 @@ namespace Logistics.Controllers
     /// <param name="Id"></param>
     /// <returns></returns>
     [HttpGet("{id}")]
-    public IActionResult GetPlanesById(string Id)
+    public async Task<IActionResult> GetPlanesById(string Id)
     {
-      return new OkResult();
+      var plane = await this.planesDAL.GetPlaneById(Id);
+      if (plane == null)
+      {
+        return new NotFoundResult();
+      }
+
+      return new OkObjectResult(plane);
     }
 
     /// <summary>
@@ -47,26 +56,57 @@ namespace Logistics.Controllers
     /// <param name="latitude"></param>
     /// <param name="longitude"></param>
     /// <param name="heading"></param>
-    /// <param name="location"></param>
+    /// <param name="landed"></param>
     /// <returns></returns>
-    [HttpPut("{id}/location/{latitude}/{longitude}/{heading}/{location}")]
-    public IActionResult UpdatePlaneLocationAndLanding(string latitude, string longitude, string heading, string location)
+    [HttpPut("{id}/location/{location}/{heading}/{landed}")]
+    public async Task<IActionResult> UpdatePlaneLocationAndLanding(string id, string location, float heading, string landed)
     {
-      return new OkResult();
+      if (string.IsNullOrEmpty(location))
+      {
+        return new BadRequestObjectResult("Location information is invalid");
+      }
+      var locations = location.Split(',');
+      if (locations.Count() != 2)
+      {
+        return new BadRequestObjectResult("Location information is invalid");
+      }
+
+      var result = await this.planesDAL.UpdatePlaneLocationAndLanding(id, locations.ToList(), heading, landed);
+      if (!result)
+      {
+        return new BadRequestObjectResult(this.planesDAL.getLastError());
+      }
+      
+       return new JsonResult(result);
     }
 
     /// <summary>
     /// Update location and heading for a plane
     /// </summary>
-    /// <param name="latitude"></param>
-    /// <param name="longitude"></param>
-    /// <param name="heading"></param>
+    /// <param name="id"></param>
     /// <param name="location"></param>
+    /// <param name="heading"></param>
     /// <returns></returns>
-    [HttpPut("{id}/location/{latitude}/{longitude}/{heading}")]
-    public IActionResult UpdatePlaneLocation(string latitude, string longitude, string heading, string location)
+    [HttpPut("{id}/location/{location}/{heading}")]
+    public async Task<IActionResult> UpdatePlaneLocation(string id, string location, float heading)
     {
-      return new OkResult();
+      if (string.IsNullOrEmpty(location))
+      {
+        return new BadRequestObjectResult("Location information is invalid");
+      }
+      var locations = location.Split(',');
+      if (locations.Count() != 2)
+      {
+        return new BadRequestObjectResult("Location information is invalid");
+      }
+
+      var result = await this.planesDAL.UpdatePlaneLocation(id, locations.ToList(), heading);
+      if (!result)
+      {
+        return new BadRequestObjectResult(this.planesDAL.getLastError());
+      }
+
+      return new JsonResult(result);
     }
 
     /// <summary>
@@ -75,7 +115,7 @@ namespace Logistics.Controllers
     /// <param name="location"></param>
     /// <returns></returns>
     [HttpPut("{id}/route/{location}")]
-    public IActionResult UpdatePlaneRoute(string location)
+    public async Task<IActionResult> UpdatePlaneRoute(string location)
     {
       return new OkResult();
     }
@@ -86,7 +126,7 @@ namespace Logistics.Controllers
     /// <param name="location"></param>
     /// <returns></returns>
     [HttpPost("{id}/route/{location}")]
-    public IActionResult AddPlaneRoute(string location)
+    public async Task<IActionResult> AddPlaneRoute(string location)
     {
       return new OkResult();
     }
@@ -97,7 +137,7 @@ namespace Logistics.Controllers
     /// <param name="location"></param>
     /// <returns></returns>
     [HttpDelete("{id}/route/destination")]
-    public IActionResult RemoveFirstPlaneRoute(string location)
+    public async Task<IActionResult> RemoveFirstPlaneRoute(string location)
     {
       return new OkResult();
     }

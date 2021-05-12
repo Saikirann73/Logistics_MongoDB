@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Logistics.DAL;
+using Logistics.DAL.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
@@ -47,6 +48,6 @@ namespace Logistics.Controllers
       }
 
       return new OkObjectResult(city);
-    }
+    } 
   }
 }

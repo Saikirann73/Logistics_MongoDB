@@ -1,17 +1,18 @@
 using System.Collections.Generic;
+using Logistics.Constants;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace Logistics.Models
 {
   public class City
   {
-    [BsonElement("_id")]
+    [BsonElement(CommonConstants.UnderScoreId)]
     public string Name { get; set; }
 
-    [BsonElement("position")]
+    [BsonElement(CitiesConstants.Position)]
     public List<string> Location { get; set; }
 
-    [BsonElement("country")]
+    [BsonElement(CitiesConstants.Country)]
     public string Country { get; set; }
   }
 }
