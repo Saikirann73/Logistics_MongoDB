@@ -63,6 +63,7 @@ namespace Logistics.DAL
       filter[CommonConstants.UnderScoreId] = new ObjectId(id);
       try
       {
+        // Will use _id index
         var cursor = await this.cargoCollection.FindAsync(filter);
         var cargos = cursor.ToList();
         if (cargos.Any())

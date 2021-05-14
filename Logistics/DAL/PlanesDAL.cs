@@ -51,6 +51,7 @@ namespace Logistics.DAL
       filter[CommonConstants.UnderScoreId] = id;
       try
       {
+        // Will use _id index
         var cursor = await this.planesCollection.FindAsync(filter);
         var planes = cursor.ToList();
         if (planes.Any())

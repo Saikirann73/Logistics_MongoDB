@@ -35,6 +35,7 @@ namespace Logistics.DAL
         // Sort is to display the city names in order in the front end
         Sort = sort
       };
+      // Will use _id index
       var cityDtosCursor = await this.citiesCollection.FindAsync(new BsonDocument(), findOptions);
       var cityDtos = cityDtosCursor.ToList();
       var cities = new ConcurrentBag<City>();
@@ -54,6 +55,7 @@ namespace Logistics.DAL
       filter[CommonConstants.UnderScoreId] = id;
       try
       {
+        // Will use _id index
         var cursor = await this.citiesCollection.FindAsync(filter);
         var cities = cursor.ToList();
         if (cities.Any())
