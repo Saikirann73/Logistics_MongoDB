@@ -7,7 +7,9 @@ namespace Logistics.DAL.Interfaces
 {
   public interface ICitiesDAL
   {
+    Task<List<City>> FetchNearestCities(string cityId);
     Task<List<City>> GetCities();
     Task<City> GetCityById(string id);
+    string GetLastError();
   }
 }

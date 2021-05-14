@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Logistics.Constants;
 using Logistics.DAL.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -79,10 +80,16 @@ namespace Logistics.Controllers
     [HttpPut("{cargoId}/delivered")]
     public async Task<IActionResult> CargoDelivered(string cargoId)
     {
-      var result = await this.cargoDAL.UpdateCargoStatus(cargoId, "delivered");
-      if (!result)
+      var result = true;
+      var cargo = await this.cargoDAL.GetCargoById(cargoId);
+      if (cargo.CourierDestination.Equals(cargo.Destination))
       {
-        return new BadRequestObjectResult("Invalid CargoId");
+        // case: Which means the courier has finally reached its original destination
+        result = await this.cargoDAL.UpdateCargoStatus(cargoId, CargoConstants.Delivered);
+        if (!result)
+        {
+          return new BadRequestObjectResult("Invalid CargoId");
+        }
       }
 
       return new JsonResult(result);
@@ -113,7 +120,7 @@ namespace Logistics.Controllers
     [HttpPut("{cargoId}/location/{locationId}")]
     public async Task<IActionResult> CargoMove(string cargoId, string locationId)
     {
-      var result = await this.cargoDAL.UpdateCargoLocation(cargoId, locationId);
+      var result = await this.cargoDAL.UpdateCargoSourceLocation(cargoId, locationId);
       if (!result)
       {
         return new BadRequestObjectResult("Invalid CargoId");

@@ -1,9 +1,12 @@
+using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Logistics.Constants;
 using Logistics.DAL.Interfaces;
 using Logistics.Models;
+using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
@@ -15,27 +18,31 @@ namespace Logistics.DAL
     private readonly IMongoClient mongoClient;
     private readonly IMongoDatabase mongodataBase;
     private readonly IMongoCollection<BsonDocument> planesCollection;
+
+    private readonly ILogger<PlanesDAL> logger;
     private string lastError;
 
-    public PlanesDAL(IMongoClient mongoClient)
+    public PlanesDAL(IMongoClient mongoClient, ILogger<PlanesDAL> logger)
     {
       this.mongoClient = mongoClient;
       this.mongodataBase = mongoClient.GetDatabase(CommonConstants.Database);
       this.planesCollection = this.mongodataBase.GetCollection<BsonDocument>(PlanesConstants.CollectionName);
+      this.logger = logger;
     }
 
     public async Task<List<Plane>> GetPlanes()
     {
       var planeDtosCursor = await this.planesCollection.FindAsync(new BsonDocument());
       var planeDtos = planeDtosCursor.ToList();
-      var planes = new List<Plane>();
-      foreach (var planeDto in planeDtos)
+      var planes = new ConcurrentBag<Plane>();
+      // Parallelizing the serialization to make it faster.
+      Parallel.ForEach(planeDtos, planeDto =>
       {
         var planeModel = BsonSerializer.Deserialize<Plane>(planeDto);
         planes.Add(planeModel);
-      }
+      });
 
-      return planes;
+      return planes.ToList();
     }
 
     public async Task<Plane> GetPlaneById(string id)
@@ -55,13 +62,15 @@ namespace Logistics.DAL
       }
       catch (MongoException ex)
       {
-        lastError = ex.ToString();
+        lastError = $"Failed to fetch the plane by id: {id}.Exception: {ex.ToString()}";
+        this.logger.LogError(lastError);
+        throw;
       }
 
       return null;
     }
 
-    public async Task<bool> UpdatePlaneLocation(string id, List<string> location, float heading)
+    public async Task<bool> UpdatePlaneLocation(string id, List<double> location, float heading)
     {
       var result = false;
       try
@@ -75,14 +84,15 @@ namespace Logistics.DAL
       }
       catch (MongoException ex)
       {
-        lastError = ex.ToString();
+        lastError = $"Failed to update the location/heading info for plane: {id}.Exception: {ex.ToString()}";
+        this.logger.LogError(lastError);
         result = false;
       }
 
       return result;
     }
 
-    public async Task<bool> UpdatePlaneLocationAndLanding(string id, List<string> location, float heading, string city)
+    public async Task<bool> UpdatePlaneLocationAndLanding(string id, List<double> location, float heading, string city)
     {
       var result = false;
       try
@@ -97,7 +107,8 @@ namespace Logistics.DAL
       }
       catch (MongoException ex)
       {
-        lastError = ex.ToString();
+        lastError = $"Failed to update the location/heading/city info for plane: {id}.Exception: {ex.ToString()}";
+        this.logger.LogError(lastError);
         result = false;
       }
 
@@ -117,7 +128,8 @@ namespace Logistics.DAL
       }
       catch (MongoException ex)
       {
-        lastError = ex.ToString();
+        lastError = $"Failed to add plane route : {city} for the plane: {id}.Exception: {ex.ToString()}";
+        this.logger.LogError(lastError);
         result = false;
       }
       return result;
@@ -136,7 +148,8 @@ namespace Logistics.DAL
       }
       catch (MongoException ex)
       {
-        lastError = ex.ToString();
+        lastError = $"Failed to replace plane route : {city} for the plane: {id}.Exception: {ex.ToString()}";
+        this.logger.LogError(lastError);
         result = false;
       }
       return result;
@@ -147,16 +160,18 @@ namespace Logistics.DAL
       var result = false;
       try
       {
-        // Todo: if you don't check it's landed there you could end up with a plane circling forever!
+        var plane = await this.GetPlaneById(id);
+        var updatedRoute = Enumerable.Range(1, plane.Route.Count).Select(i => plane.Route[i % plane.Route.Count]).ToArray();
         var filter = Builders<BsonDocument>.Filter.Eq(CommonConstants.UnderScoreId, id);
         var update = Builders<BsonDocument>.Update
-                             .PopFirst(PlanesConstants.Route);
+                             .Set(PlanesConstants.Route, updatedRoute);
         var updatedPlaneResult = await this.planesCollection.UpdateOneAsync(filter, update);
         result = updatedPlaneResult.IsAcknowledged;
       }
       catch (MongoException ex)
       {
-        lastError = ex.ToString();
+        lastError = $"Failed to remove the first route  for the plane: {id}.Exception: {ex.ToString()}";
+        this.logger.LogError(lastError);
         result = false;
       }
       return result;

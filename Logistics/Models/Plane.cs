@@ -4,13 +4,14 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace Logistics.Models
 {
+  [BsonIgnoreExtraElements]
   public class Plane
   {
     [BsonElement(CommonConstants.UnderScoreId)]
     public string Callsign { get; set; }
 
     [BsonElement(PlanesConstants.CurrentLocation)]
-    public List<float> CurrentLocation { get; set; }
+    public List<double> CurrentLocation { get; set; }
 
     [BsonElement(PlanesConstants.Heading)]
     public decimal Heading { get; set; }
@@ -20,5 +21,11 @@ namespace Logistics.Models
 
     [BsonElement(PlanesConstants.Landed)]
     public string Landed { get; set; }
+
+    [BsonElement(PlanesConstants.Hub)]
+    public string Hub { get; set; }
+    
+    [BsonElement(PlanesConstants.PlaneType)]
+    public string PlaneType { get; set; }
   }
 }

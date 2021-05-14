@@ -13,7 +13,9 @@ namespace Logistics.DAL.Interfaces
     string GetLastError();
     Task<bool> RemoveCourier(string cargoId);
     Task<bool> UpdateCargoCourier(string cargoId, string courier);
-    Task<bool> UpdateCargoLocation(string cargoId, string location);
+    Task<bool> UpdateCargoDestinationLocation(string cargoId, string destination);
+    Task<bool> UpdateCargoRouteInfo(string cargoId, string destination, string transitType, string cargoFlight);
+    Task<bool> UpdateCargoSourceLocation(string cargoId, string location);
     Task<bool> UpdateCargoStatus(string cargoId, string status);
   }
 }

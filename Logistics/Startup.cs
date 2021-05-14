@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Logistics.DAL;
 using Logistics.DAL.Interfaces;
@@ -37,14 +38,15 @@ namespace Logistics
                .AllowAnyMethod()
                .AllowAnyHeader();
       }));
-      services.AddScoped<IMongoClient>(x => { return new MongoClient(connectionString); });
-      services.AddScoped<ICitiesDAL, CitiesDAL>();
-      services.AddScoped<IPlanesDAL, PlanesDAL>();
-      services.AddScoped<ICargoDAL, CargoDAL>();
+      services.AddSingleton<IMongoClient>(x => { return new MongoClient(connectionString); });
+      services.AddSingleton<ICitiesDAL, CitiesDAL>();
+      services.AddSingleton<IPlanesDAL, PlanesDAL>();
+      services.AddSingleton<ICargoDAL, CargoDAL>();
+      services.AddSingleton<CargoChangeStream, CargoChangeStream>();
     }
 
     // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-    public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+    public void Configure(IApplicationBuilder app, IWebHostEnvironment env, CargoChangeStream cargoChangeStream)
     {
       if (env.IsDevelopment())
       {
@@ -66,11 +68,12 @@ namespace Logistics
       app.UseRouting();
 
       app.UseAuthorization();
-     
+
       app.UseEndpoints(endpoints =>
       {
         endpoints.MapControllers();
       });
+      new Thread(() => cargoChangeStream.Init()).Start();
     }
   }
 }

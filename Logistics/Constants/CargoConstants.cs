@@ -11,5 +11,10 @@ namespace Logistics.Constants
     public const string Delivered = "delivered";
     public const string DeliveredAt = "deliveredAt";
     public const string InProgress = "in process";
+    public const string CourierSource = "courierSource";
+    public const string CourierDestination = "courierDestination";
+    public const string TransitType = "transitType";
+    public const string CargoTransitTypeRegional = "regional";
+    public const string CargoTransitTypeInternational = "international";
   }
 }

@@ -77,7 +77,7 @@ namespace Logistics.Controllers
         return new BadRequestObjectResult("Found invalid city");
       }
 
-      var result = await this.planesDAL.UpdatePlaneLocationAndLanding(id, locations.ToList(), heading, city);
+      var result = await this.planesDAL.UpdatePlaneLocationAndLanding(id, locations.Select(x => double.Parse(x)).ToList(), heading, city);
       if (!result)
       {
         return new BadRequestObjectResult(this.planesDAL.GetLastError());
@@ -106,7 +106,7 @@ namespace Logistics.Controllers
         return new BadRequestObjectResult("Location information is invalid");
       }
 
-      var result = await this.planesDAL.UpdatePlaneLocation(id, locations.ToList(), heading);
+      var result = await this.planesDAL.UpdatePlaneLocation(id, locations.Select(x => double.Parse(x)).ToList(), heading);
       if (!result)
       {
         return new BadRequestObjectResult(this.planesDAL.GetLastError());
