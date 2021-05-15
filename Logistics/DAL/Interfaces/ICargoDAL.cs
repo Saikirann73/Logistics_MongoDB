@@ -16,6 +16,7 @@ namespace Logistics.DAL.Interfaces
     Task<bool> UpdateCargoDestinationLocation(string cargoId, string destination);
     Task<bool> UpdateCargoRouteInfo(string cargoId, string destination, string transitType, string cargoFlight);
     Task<bool> UpdateCargoSourceLocation(string cargoId, string location);
-    Task<bool> UpdateCargoStatus(string cargoId, string status);
+    Task<bool> UpdateCargoStatusDuration(Cargo cargo, string status);
+    Task<double> FetchAverageDeliveryTime();
   }
 }

@@ -108,7 +108,7 @@ namespace Logistics
 
     public Plane FetchNearestRegionalPlane(string sourceCity, List<Plane> allPlanes)
     {
-      var plane = allPlanes.FirstOrDefault(x => x.Route.Contains(sourceCity) && x.PlaneType == PlanesConstants.PlaneTypeRegional);
+      var plane = allPlanes.FirstOrDefault(x => x.Route.Contains(sourceCity) && x.PlaneType.ToLower() == PlanesConstants.PlaneTypeRegional.ToLower());
       return plane;
     }
 

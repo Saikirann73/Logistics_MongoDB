@@ -14,7 +14,8 @@ namespace Logistics.Constants
     public const string CourierSource = "courierSource";
     public const string CourierDestination = "courierDestination";
     public const string TransitType = "transitType";
-    public const string CargoTransitTypeRegional = "regional";
-    public const string CargoTransitTypeInternational = "international";
+    public const string CargoTransitTypeRegional = "Regional";
+    public const string CargoTransitTypeInternational = "International";
+    public const string Duration = "duration";
   }
 }

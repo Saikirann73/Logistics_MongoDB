@@ -24,6 +24,8 @@ namespace Logistics.DAL
     {
       this.mongoClient = mongoClient;
       this.mongodataBase = mongoClient.GetDatabase(CommonConstants.Database);
+      // var databaseWithWriteConcern = this.mongodataBase.WithWriteConcern(WriteConcern.WMajority).WithReadConcern(ReadConcern.Majority);
+      // this.cargoCollection = databaseWithWriteConcern.GetCollection<BsonDocument>(CargoConstants.CollectionName);
       this.cargoCollection = this.mongodataBase.GetCollection<BsonDocument>(CargoConstants.CollectionName);
       this.logger = logger;
     }
@@ -93,28 +95,31 @@ namespace Logistics.DAL
          {CargoConstants.CourierDestination,  destination},
          {CargoConstants.Status, CargoConstants.InProgress},
          {CargoConstants.TransitType, CargoConstants.CargoTransitTypeRegional},
-         {CargoConstants.Received, new BsonDateTime(DateTime.Now)}
+         {CargoConstants.Received, new BsonDateTime(DateTime.Now).ToUniversalTime()}
        };
       await this.cargoCollection.InsertOneAsync(cargo); // Todo: check about write concern
       var newCargo = await this.GetCargoById(cargo[CommonConstants.UnderScoreId].ToString());
       return newCargo;
     }
 
-    public async Task<bool> UpdateCargoStatus(string cargoId, string status)
+    public async Task<bool> UpdateCargoStatusDuration(Cargo cargo, string status)
     {
       var result = false;
       try
       {
-        var filter = Builders<BsonDocument>.Filter.Eq(CommonConstants.UnderScoreId, new ObjectId(cargoId));
+        var presentDateTime = new BsonDateTime(DateTime.Now).ToUniversalTime();
+        var filter = Builders<BsonDocument>.Filter.Eq(CommonConstants.UnderScoreId, new ObjectId(cargo.Id));
+        var duration = presentDateTime - cargo.Received;
         var update = Builders<BsonDocument>.Update
                              .Set(CargoConstants.Status, status)
-                             .Set(CargoConstants.DeliveredAt, new BsonDateTime(DateTime.Now));
+                             .Set(CargoConstants.DeliveredAt, presentDateTime)
+                             .Set(CargoConstants.Duration, duration.TotalMilliseconds);
         var updatedCargoResult = await this.cargoCollection.UpdateOneAsync(filter, update);
         result = updatedCargoResult.IsAcknowledged;
       }
       catch (MongoException ex)
       {
-        lastError = $"Failed to update the cargo : {cargoId} with status: {status}.Exception: {ex.ToString()}";
+        lastError = $"Failed to update the cargo : {cargo.Id} with status: {status}.Exception: {ex.ToString()}";
         this.logger.LogError(lastError);
         result = false;
       }
@@ -227,6 +232,25 @@ namespace Logistics.DAL
     public string GetLastError()
     {
       return lastError;
+    }
+
+    public async Task<double> FetchAverageDeliveryTime()
+    {
+      var average = 0.0;
+      var builder = Builders<BsonDocument>.Filter;
+      var filter = builder.Exists(CargoConstants.Duration);
+      var projection = Builders<BsonDocument>.Projection.Include(CargoConstants.Duration).Exclude(CommonConstants.UnderScoreId);
+      // Created sparse index on 'duration'.-> db.cargos.createIndex({duration:1}, { sparse: true })
+      // Also the following query will act as a covered query 
+      var cursor = await this.cargoCollection.Find(filter)
+                                             .Project(projection)
+                                             .ToListAsync();
+      var durations = cursor.ToList().Select(x => x.GetValue(CargoConstants.Duration).AsDouble);
+      if (durations.Any())
+      {
+        average = durations.Sum() / durations.Count();
+      }
+      return average;
     }
   }
 }

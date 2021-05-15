@@ -88,7 +88,7 @@ namespace Logistics.Controllers
         if (cargo.Location == cargo.Destination || cargo.Courier == null)
         {
           // case: Which means the cargo is set to be delivered only if it gets delievered by the assigned cargo
-          result = await this.cargoDAL.UpdateCargoStatus(cargoId, CargoConstants.Delivered);
+          result = await this.cargoDAL.UpdateCargoStatusDuration(cargo, CargoConstants.Delivered);
           if (!result)
           {
             return new BadRequestObjectResult("Invalid CargoId");
@@ -168,6 +168,17 @@ namespace Logistics.Controllers
       }
 
       return new JsonResult(result);
+    }
+
+     /// <summary>
+    /// Gets average delivery time
+    /// </summary>
+    /// <returns></returns>
+    [HttpGet("averageDeliveryTime")]
+    public async Task<IActionResult> AverageDeliveryTime()
+    {
+       var result = await this.cargoDAL.FetchAverageDeliveryTime();
+       return new JsonResult(result);
     }
   }
 }

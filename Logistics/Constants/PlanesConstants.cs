@@ -10,7 +10,7 @@ namespace Logistics.Constants
         public const string Route = "route";
         public const string Hub = "hub";
         public const string PlaneType = "planeType";
-        public const string PlaneTypeRegional = "regional";
-        public const string PlaneTypeInternational = "international";
+        public const string PlaneTypeRegional = "Regional";
+        public const string PlaneTypeInternational = "International";
     }
 }
