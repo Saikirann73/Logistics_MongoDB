@@ -44,6 +44,9 @@ namespace Logistics
       new Thread(async () => await ObserveCargoDeliveries()).Start();
     }
 
+    /// <summary>
+    /// Change stream to watch the creation of the cargoes and assigns the plane
+    /// </summary>
     private async Task ObserveNewCargos()
     {
       var pipeline = new EmptyPipelineDefinition<ChangeStreamDocument<BsonDocument>>()
@@ -67,6 +70,11 @@ namespace Logistics
             this.logger.LogInformation($"Got a new cargo : {newCargo.Id} from source: {newCargo.CourierSource} to destination: {newCargo.CourierDestination}");
             var allPlanes = await this.planesDAL.GetPlanes();
             var nearestRegionalPlane = this.FetchNearestRegionalPlane(newCargo.Location, allPlanes);
+            if (nearestRegionalPlane == null)
+            {
+              this.logger.LogWarning($"Could not find any nearest plane to pick the cargo: {newCargo.Id}");
+              return;
+            }
             await ValidateDestination(newCargo, allPlanes, nearestRegionalPlane);
           }
           catch (Exception ex)
@@ -77,16 +85,30 @@ namespace Logistics
         });
       }
     }
+
+    /// <summary>
+    /// Change stream to watch for 'location' update and then finds the correct plane
+    /// </summary>
+    private async Task ObserveCargoDeliveries()
+    {
+      var updateSourceLocationPipeline = new EmptyPipelineDefinition<ChangeStreamDocument<BsonDocument>>()
+                                  .Match(x => x.OperationType == ChangeStreamOperationType.Update);
+      var updateSourceLocationChangeStreamOptions = new ChangeStreamOptions
+      {
+        FullDocument = ChangeStreamFullDocumentOption.UpdateLookup
+      };
+
+      using (var cursor = await this.cargoCollection.WatchAsync(updateSourceLocationPipeline, updateSourceLocationChangeStreamOptions))
+      {
+        await this._semaphoreSlim.WaitAsync();
+        await this.CheckAndAssignCargo(cursor);
+        this._semaphoreSlim.Release();
+      }
+    }
+
     public Plane FetchNearestRegionalPlane(string sourceCity, List<Plane> allPlanes)
     {
       var plane = allPlanes.FirstOrDefault(x => x.Route.Contains(sourceCity) && x.PlaneType == PlanesConstants.PlaneTypeRegional);
-      return plane;
-    }
-
-    public Plane FetchNearestInternationalPlane(string hub, List<Plane> allPlanes)
-    {
-      var plane = allPlanes.FirstOrDefault(x => x.Route.Contains(hub) && x.PlaneType == PlanesConstants.PlaneTypeInternational);
-      // Todo : find the actual nearest using geo spatial operators
       return plane;
     }
 
@@ -102,24 +124,8 @@ namespace Logistics
       {
         // case: The created courier is an international package, so assigning to hub
         this.logger.LogInformation($"Assigning the cargo : {newCargo.Id} to the plane: {nearestRegionalPlane.Callsign} and the destination has been set to {nearestRegionalPlane.Hub} hub");
+        //await this.AssignCargo(newCargo);
         await this.cargoDAL.UpdateCargoRouteInfo(newCargo.Id, nearestRegionalPlane.Hub, CargoConstants.CargoTransitTypeRegional, nearestRegionalPlane.Callsign);
-      }
-    }
-
-    private async Task ObserveCargoDeliveries()
-    {
-      var updateSourceLocationPipeline = new EmptyPipelineDefinition<ChangeStreamDocument<BsonDocument>>()
-                                  .Match(x => x.OperationType == ChangeStreamOperationType.Update);
-      var updateSourceLocationChangeStreamOptions = new ChangeStreamOptions
-      {
-        FullDocument = ChangeStreamFullDocumentOption.UpdateLookup
-      };
-
-      using (var cursor = await this.cargoCollection.WatchAsync(updateSourceLocationPipeline, updateSourceLocationChangeStreamOptions))
-      {
-        await this._semaphoreSlim.WaitAsync();
-        await this.CheckAndAssignCargo(cursor);
-        this._semaphoreSlim.Release();
       }
     }
 
@@ -140,26 +146,7 @@ namespace Logistics
             return;
           }
           var deliveredCargo = BsonSerializer.Deserialize<Cargo>(change.FullDocument);
-          var allPlanes = await this.planesDAL.GetPlanes();
-          var plane = allPlanes.FirstOrDefault(x => x.Callsign == deliveredCargo.Location);
-          if (plane != null)
-          {
-            // Currently the courier is in plane and not at any city.So dont assign anything here
-            this.logger.LogInformation($"{plane.Callsign} has picked up the cargo");
-            return;
-          }
-          var nearestCitiesToDestination = await this.citiesDAL.FetchNearestCities(deliveredCargo.CourierDestination);
-          var planesWithDestinationRoute = allPlanes.Where(x => x.Route.Contains(deliveredCargo.Destination));
-          foreach (var nearestCity in nearestCitiesToDestination)
-          {
-            Plane planeToAssign = planesWithDestinationRoute?.FirstOrDefault(x => x.Route.Contains(nearestCity.Name));
-            if (planeToAssign != null)
-            {
-              this.logger.LogInformation($"Assigning the cargo : {deliveredCargo.Id} to the plane: {planeToAssign.Callsign} and the destination has been set to {nearestCity.Name}");
-              await this.cargoDAL.UpdateCargoRouteInfo(deliveredCargo.Id, nearestCity.Name, CargoConstants.CargoTransitTypeInternational, planeToAssign.Callsign);
-              break;
-            }
-          }
+          await this.AssignCargo(deliveredCargo);
         }
         catch (Exception ex)
         {
@@ -167,6 +154,30 @@ namespace Logistics
           this.logger.LogError("Exception in Updated Cargoes watcher. Exception:" + ex.ToString());
         }
       });
+    }
+
+    private async Task AssignCargo(Cargo cargo)
+    {
+      var allPlanes = await this.planesDAL.GetPlanes();
+      var plane = allPlanes.FirstOrDefault(x => x.Callsign == cargo.Location);
+      if (plane != null)
+      {
+        // Currently the courier is in plane and not at any city.So dont assign anything here
+        this.logger.LogInformation($"{plane.Callsign} has been picked up the cargo");
+        return;
+      }
+      var nearestCitiesToDestination = await this.citiesDAL.FetchNearestCities(cargo.CourierDestination);
+      var planesWithDestinationRoute = allPlanes.Where(x => x.Route.Contains(cargo.Destination));
+      foreach (var nearestCity in nearestCitiesToDestination)
+      {
+        Plane planeToAssign = planesWithDestinationRoute?.FirstOrDefault(x => x.Route.Contains(nearestCity.Name));
+        if (planeToAssign != null && planeToAssign.Callsign != cargo.Location)
+        {
+          this.logger.LogInformation($"Assigning the cargo : {cargo.Id} to the plane: {planeToAssign.Callsign} and the destination has been set to {nearestCity.Name}");
+          await this.cargoDAL.UpdateCargoRouteInfo(cargo.Id, nearestCity.Name, CargoConstants.CargoTransitTypeInternational, planeToAssign.Callsign);
+          break;
+        }
+      }
     }
   }
 }

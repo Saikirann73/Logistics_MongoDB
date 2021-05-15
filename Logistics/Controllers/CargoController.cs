@@ -85,10 +85,14 @@ namespace Logistics.Controllers
       if (cargo.CourierDestination.Equals(cargo.Destination))
       {
         // case: Which means the courier has finally reached its original destination
-        result = await this.cargoDAL.UpdateCargoStatus(cargoId, CargoConstants.Delivered);
-        if (!result)
+        if (cargo.Location == cargo.Destination || cargo.Courier == null)
         {
-          return new BadRequestObjectResult("Invalid CargoId");
+          // case: Which means the cargo is set to be delivered only if it gets delievered by the assigned cargo
+          result = await this.cargoDAL.UpdateCargoStatus(cargoId, CargoConstants.Delivered);
+          if (!result)
+          {
+            return new BadRequestObjectResult("Invalid CargoId");
+          }
         }
       }
 
@@ -120,7 +124,27 @@ namespace Logistics.Controllers
     [HttpPut("{cargoId}/location/{locationId}")]
     public async Task<IActionResult> CargoMove(string cargoId, string locationId)
     {
-      var result = await this.cargoDAL.UpdateCargoSourceLocation(cargoId, locationId);
+      var result = false;
+      var cargo = await this.cargoDAL.GetCargoById(cargoId);
+      var planes = await this.planesDAL.GetPlanes();
+      var isNewLocationPlane = planes.Any(x => x.Callsign == locationId);
+      var isPreviousLocationPlane = planes.Any(x => x.Callsign == cargo.Location);
+      // Verifying that it's only being transferred from a plane to a city or vise-versa.
+      if (isNewLocationPlane && !isPreviousLocationPlane)
+      {
+        // Case: Which means courier is onloading to a plane from a city
+        result = await this.cargoDAL.UpdateCargoSourceLocation(cargoId, locationId);
+      }
+      else if (!isNewLocationPlane && isPreviousLocationPlane)
+      {
+         // Case: Which means courier is offloading to a city
+        if (locationId == cargo.Destination)
+        {
+          await this.cargoDAL.RemoveCourier(cargoId);
+        }
+        result = await this.cargoDAL.UpdateCargoSourceLocation(cargoId, locationId);
+      }
+
       if (!result)
       {
         return new BadRequestObjectResult("Invalid CargoId");
