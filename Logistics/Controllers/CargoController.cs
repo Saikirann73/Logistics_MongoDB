@@ -137,7 +137,7 @@ namespace Logistics.Controllers
       }
       else if (!isNewLocationPlane && isPreviousLocationPlane)
       {
-         // Case: Which means courier is offloading to a city
+        // Case: Which means courier is offloading to a city
         if (locationId == cargo.Destination)
         {
           await this.cargoDAL.RemoveCourier(cargoId);
@@ -170,15 +170,16 @@ namespace Logistics.Controllers
       return new JsonResult(result);
     }
 
-     /// <summary>
-    /// Gets average delivery time
+    /// <summary>
+    /// Gets average delivery time in seconds
     /// </summary>
     /// <returns></returns>
     [HttpGet("averageDeliveryTime")]
     public async Task<IActionResult> AverageDeliveryTime()
     {
-       var result = await this.cargoDAL.FetchAverageDeliveryTime();
-       return new JsonResult(result);
+      var averageTimeInMs = await this.cargoDAL.FetchAverageDeliveryTime();
+      var averageTimeInSec = averageTimeInMs / 1000;
+      return new JsonResult(averageTimeInSec);
     }
   }
 }

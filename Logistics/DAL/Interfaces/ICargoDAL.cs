@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Logistics.Models;
@@ -18,5 +19,6 @@ namespace Logistics.DAL.Interfaces
     Task<bool> UpdateCargoSourceLocation(string cargoId, string location);
     Task<bool> UpdateCargoStatusDuration(Cargo cargo, string status);
     Task<double> FetchAverageDeliveryTime();
+    Task<bool> AddToCourierHistory(string cargoId, string status, string planeId, string locationId, DateTime time);
   }
 }

@@ -38,6 +38,6 @@ namespace Logistics.Models
     public string TransitType { get; set; }
 
     [BsonElement(CargoConstants.Duration)]
-    public string Duration { get; set; }
+    public double Duration { get; set; }
   }
 }

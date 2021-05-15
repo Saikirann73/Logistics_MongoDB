@@ -101,7 +101,7 @@ namespace Logistics
       using (var cursor = await this.cargoCollection.WatchAsync(updateSourceLocationPipeline, updateSourceLocationChangeStreamOptions))
       {
         await this._semaphoreSlim.WaitAsync();
-        await this.CheckAndAssignCargo(cursor);
+        await this.WatchCargoUpdates(cursor);
         this._semaphoreSlim.Release();
       }
     }
@@ -127,9 +127,14 @@ namespace Logistics
         //await this.AssignCargo(newCargo);
         await this.cargoDAL.UpdateCargoRouteInfo(newCargo.Id, nearestRegionalPlane.Hub, CargoConstants.CargoTransitTypeRegional, nearestRegionalPlane.Callsign);
       }
+      await this.cargoDAL.AddToCourierHistory(newCargo.Id,
+                                              CargoConstants.Created,
+                                              nearestRegionalPlane.Callsign,
+                                              newCargo.Location,
+                                              DateTime.UtcNow);
     }
 
-    private async Task CheckAndAssignCargo(IChangeStreamCursor<ChangeStreamDocument<BsonDocument>> cursor)
+    private async Task WatchCargoUpdates(IChangeStreamCursor<ChangeStreamDocument<BsonDocument>> cursor)
     {
       await cursor?.ForEachAsync(async change =>
       {
@@ -139,13 +144,16 @@ namespace Logistics
         }
         try
         {
+          Cargo deliveredCargo;
           var result = change.UpdateDescription.UpdatedFields.Contains(CargoConstants.Location);
           if (!result)
           {
+            await WatchDeliveredStatus(change);
             // Update event is not for 'location' field. So ignoring.
             return;
           }
-          var deliveredCargo = BsonSerializer.Deserialize<Cargo>(change.FullDocument);
+
+          deliveredCargo = BsonSerializer.Deserialize<Cargo>(change.FullDocument);
           await this.AssignCargo(deliveredCargo);
         }
         catch (Exception ex)
@@ -156,6 +164,23 @@ namespace Logistics
       });
     }
 
+    private async Task WatchDeliveredStatus(ChangeStreamDocument<BsonDocument> change)
+    {
+      var statusResult = change.UpdateDescription.UpdatedFields.TryGetValue(CargoConstants.Status, out BsonValue statusElement);
+      if (statusResult)
+      {
+        if (statusElement.ToString() == CargoConstants.Delivered)
+        {
+          Cargo deliveredCargo = BsonSerializer.Deserialize<Cargo>(change.FullDocument);
+          await this.cargoDAL.AddToCourierHistory(deliveredCargo.Id,
+                                                  CargoConstants.Delivered,
+                                                  deliveredCargo.Courier,
+                                                  deliveredCargo.Location,
+                                                  DateTime.UtcNow);
+        }
+      }
+    }
+
     private async Task AssignCargo(Cargo cargo)
     {
       var allPlanes = await this.planesDAL.GetPlanes();
@@ -164,6 +189,11 @@ namespace Logistics
       {
         // Currently the courier is in plane and not at any city.So dont assign anything here
         this.logger.LogInformation($"{plane.Callsign} has been picked up the cargo");
+        await this.cargoDAL.AddToCourierHistory(cargo.Id,
+                                                CargoConstants.InProgress,
+                                                plane.Callsign,
+                                                cargo.Location,
+                                                DateTime.UtcNow);
         return;
       }
       var nearestCitiesToDestination = await this.citiesDAL.FetchNearestCities(cargo.CourierDestination);
@@ -175,6 +205,11 @@ namespace Logistics
         {
           this.logger.LogInformation($"Assigning the cargo : {cargo.Id} to the plane: {planeToAssign.Callsign} and the destination has been set to {nearestCity.Name}");
           await this.cargoDAL.UpdateCargoRouteInfo(cargo.Id, nearestCity.Name, CargoConstants.CargoTransitTypeInternational, planeToAssign.Callsign);
+          await this.cargoDAL.AddToCourierHistory(cargo.Id,
+                                                  CargoConstants.InProgress,
+                                                  planeToAssign.Callsign,
+                                                  cargo.Location,
+                                                  DateTime.UtcNow);
           break;
         }
       }

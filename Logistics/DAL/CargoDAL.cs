@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Logistics.Constants;
 using Logistics.DAL.Interfaces;
@@ -20,6 +21,7 @@ namespace Logistics.DAL
     private readonly IMongoCollection<BsonDocument> cargoCollection;
     private readonly ILogger<CargoDAL> logger;
     private string lastError;
+    private SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(1, 1);
     public CargoDAL(IMongoClient mongoClient, ILogger<CargoDAL> logger)
     {
       this.mongoClient = mongoClient;
@@ -251,6 +253,36 @@ namespace Logistics.DAL
         average = durations.Sum() / durations.Count();
       }
       return average;
+    }
+
+    public async Task<bool> AddToCourierHistory(string cargoId,
+                                                string status,
+                                                string planeId,
+                                                string locationId,
+                                                DateTime time)
+    {
+      await this._semaphoreSlim.WaitAsync(); // Thread safe lock to synchronize the logging
+      var result = false;
+      try
+      {
+        var filter = Builders<BsonDocument>.Filter.Eq(CommonConstants.UnderScoreId, new ObjectId(cargoId));
+        var historyEntry = new BsonDocument(new BsonElement(CargoConstants.Status, status))
+                                       .Add(new BsonElement(CargoConstants.Plane, planeId))
+                                       .Add(new BsonElement(CargoConstants.PackageLocation, locationId))
+                                       .Add(new BsonElement(CargoConstants.Time, new BsonDateTime(time)));
+        var update = Builders<BsonDocument>.Update.AddToSet(CargoConstants.CourierTrackingHistory, historyEntry);
+        var updatedCargoResult = await this.cargoCollection.UpdateOneAsync(filter, update);
+        result = updatedCargoResult.IsAcknowledged;
+      }
+      catch (MongoException ex)
+      {
+        lastError = $"Failed to update the tracking history for the cargo : {cargoId}.Exception: {ex.ToString()}";
+        this.logger.LogError(lastError);
+        result = false;
+      }
+
+      this._semaphoreSlim.Release();
+      return result;
     }
   }
 }
