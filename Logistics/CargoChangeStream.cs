@@ -174,7 +174,7 @@ namespace Logistics
           Cargo deliveredCargo = BsonSerializer.Deserialize<Cargo>(change.FullDocument);
           await this.cargoDAL.AddToCourierHistory(deliveredCargo.Id,
                                                   CargoConstants.Delivered,
-                                                  deliveredCargo.Courier,
+                                                  deliveredCargo.Courier ?? string.Empty,
                                                   deliveredCargo.Location,
                                                   DateTime.UtcNow);
         }
