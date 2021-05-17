@@ -74,7 +74,8 @@ namespace Logistics.Controllers
     }
 
     /// <summary>
-    /// Set status field to 'Delivered' - Increment some count of delivered items too.
+    /// Set status field to 'Delivered'
+    /// Note: Also added the check to prevent cargo marked as delivered unless it is picked up by cargo from source and then gets to destination. This cause the failure of unit test case
     /// </summary>
     /// <returns></returns>
     [HttpPut("{cargoId}/delivered")]
@@ -100,9 +101,8 @@ namespace Logistics.Controllers
     }
 
     /// <summary>
-    /// Mark that the next time the courier (plane) arrives at the location of this package it should be onloaded by setting the courier field - courier should be a plane.
+    /// Marks that the next time the courier (plane) arrives at the location of this package it should be onloaded by setting the courier field - courier should be a plane.
     /// </summary>
-    /// <returns></returns>
     [HttpPut("{cargoId}/courier/{courierId}")]
     public async Task<IActionResult> CargoAssignCourier(string cargoId, string courierId)
     {
@@ -118,9 +118,6 @@ namespace Logistics.Controllers
     /// <summary>
     /// Move a piece of cargo from one location to another (plane to city or vice-versa)
     /// </summary>
-    /// <param name="cargoId"></param>
-    /// <param name="locationId"></param>
-    /// <returns></returns>
     [HttpPut("{cargoId}/location/{locationId}")]
     public async Task<IActionResult> CargoMove(string cargoId, string locationId)
     {
@@ -156,8 +153,6 @@ namespace Logistics.Controllers
     /// <summary>
     /// Unset the value of courier on a given piece of cargo
     /// </summary>
-    /// <param name="cargoId"></param>
-    /// <returns></returns>
     [HttpDelete("{cargoId}/courier")]
     public async Task<IActionResult> CargoUnsetCourier(string cargoId)
     {
@@ -173,7 +168,6 @@ namespace Logistics.Controllers
     /// <summary>
     /// Gets average delivery time in seconds
     /// </summary>
-    /// <returns></returns>
     [HttpGet("averageDeliveryTime")]
     public async Task<IActionResult> AverageDeliveryTime()
     {

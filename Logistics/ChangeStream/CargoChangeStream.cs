@@ -45,7 +45,7 @@ namespace Logistics
     }
 
     /// <summary>
-    /// Change stream to watch the creation of the cargoes and assigns the plane
+    /// Change stream to watch the creation of the cargoes and assigns the regional planes
     /// </summary>
     private async Task ObserveNewCargos()
     {
@@ -88,7 +88,7 @@ namespace Logistics
     }
 
     /// <summary>
-    /// Change stream to watch for 'location' update and then finds the correct plane
+    /// Change stream to watch for 'location' field update and then finds the correct plane
     /// </summary>
     private async Task ObserveCargoDeliveries()
     {
@@ -125,7 +125,6 @@ namespace Logistics
       {
         // case: The created courier is an international package, so assigning to hub
         this.logger.LogInformation($"Assigning the cargo : {newCargo.Id} to the plane: {nearestRegionalPlane.Callsign} and the destination has been set to {nearestRegionalPlane.Hub} hub");
-        //await this.AssignCargo(newCargo);
         await this.cargoDAL.UpdateCargoRouteInfo(newCargo.Id, nearestRegionalPlane.Hub, CargoConstants.CargoTransitTypeRegional, nearestRegionalPlane.Callsign);
       }
       await this.cargoDAL.AddToCourierHistory(newCargo.Id,
@@ -155,7 +154,7 @@ namespace Logistics
           }
 
           deliveredCargo = BsonSerializer.Deserialize<Cargo>(change.FullDocument);
-          await this.AssignCargo(deliveredCargo);
+          await this.AssignPlane(deliveredCargo);
         }
         catch (Exception ex)
         {
@@ -173,6 +172,7 @@ namespace Logistics
         if (statusElement.ToString() == CargoConstants.Delivered)
         {
           Cargo deliveredCargo = BsonSerializer.Deserialize<Cargo>(change.FullDocument);
+          this.logger.LogInformation($"Courier {deliveredCargo.Id} has been marked as delivered");
           await this.cargoDAL.AddToCourierHistory(deliveredCargo.Id,
                                                   CargoConstants.Delivered,
                                                   deliveredCargo.Courier ?? string.Empty,
@@ -182,7 +182,7 @@ namespace Logistics
       }
     }
 
-    private async Task AssignCargo(Cargo cargo)
+    private async Task AssignPlane(Cargo cargo)
     {
       var allPlanes = await this.planesDAL.GetPlanes();
       var plane = allPlanes.FirstOrDefault(x => x.Callsign == cargo.Location);
@@ -206,12 +206,15 @@ namespace Logistics
         if (planeToAssign != null && planeToAssign.Callsign != cargo.Location)
         {
           this.logger.LogInformation($"Assigning the cargo : {cargo.Id} to the plane: {planeToAssign.Callsign} and the destination has been set to {nearestCity.Name}");
-          await this.cargoDAL.UpdateCargoRouteInfo(cargo.Id, nearestCity.Name, CargoConstants.CargoTransitTypeInternational, planeToAssign.Callsign);
-          await this.cargoDAL.AddToCourierHistory(cargo.Id,
-                                                  CargoConstants.InProgress,
-                                                  planeToAssign.Callsign,
-                                                  cargo.Location,
-                                                  DateTime.UtcNow);
+          var result = await this.cargoDAL.UpdateCargoRouteInfo(cargo.Id, nearestCity.Name, CargoConstants.CargoTransitTypeInternational, planeToAssign.Callsign);
+          if (result)
+          {
+            await this.cargoDAL.AddToCourierHistory(cargo.Id,
+                                                    CargoConstants.InProgress,
+                                                    planeToAssign.Callsign,
+                                                    cargo.Location,
+                                                    DateTime.UtcNow);
+          }
           break;
         }
       }
@@ -228,14 +231,17 @@ namespace Logistics
       var backupFlight = allPlanes.FirstOrDefault(x => x.PlaneType.ToLower() == PlanesConstants.PlaneTypeBackup.ToLower());
       if (backupFlight != null)
       {
-        await this.cargoDAL.UpdateCargoRouteInfo(cargo.Id, cargo.Destination, CargoConstants.CargoTransitTypeBackup, backupFlight.Callsign);
-        await this.planesDAL.AddPlaneRoute(backupFlight.Callsign, cargo.Location);
-        await this.planesDAL.AddPlaneRoute(backupFlight.Callsign, cargo.Destination);
-        await this.cargoDAL.AddToCourierHistory(cargo.Id,
-                                                 CargoConstants.InProgress,
-                                                 backupFlight.Callsign,
-                                                 cargo.Location,
-                                                 DateTime.UtcNow);
+        var result = await this.cargoDAL.UpdateCargoRouteInfo(cargo.Id, cargo.Destination, CargoConstants.CargoTransitTypeBackup, backupFlight.Callsign);
+        if (result)
+        {
+          await this.planesDAL.AddPlaneRoute(backupFlight.Callsign, cargo.Location);
+          await this.planesDAL.AddPlaneRoute(backupFlight.Callsign, cargo.Destination);
+          await this.cargoDAL.AddToCourierHistory(cargo.Id,
+                                                   CargoConstants.InProgress,
+                                                   backupFlight.Callsign,
+                                                   cargo.Location,
+                                                   DateTime.UtcNow);
+        }
       }
     }
   }

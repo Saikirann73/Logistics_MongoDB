@@ -23,7 +23,8 @@ namespace Logistics.DAL
     {
       this.mongoClient = mongoClient;
       this.mongodataBase = mongoClient.GetDatabase(CommonConstants.Database);
-      this.citiesCollection = this.mongodataBase.GetCollection<BsonDocument>(CitiesConstants.CollectionName);
+      var databaseWithWriteConcern = this.mongodataBase.WithWriteConcern(WriteConcern.WMajority).WithReadConcern(ReadConcern.Majority);
+      this.citiesCollection = databaseWithWriteConcern.GetCollection<BsonDocument>(CitiesConstants.CollectionName);
       this.logger = logger;
     }
 
@@ -69,7 +70,6 @@ namespace Logistics.DAL
       {
         lastError = $"Failed to fetch the city by id: {id} Exception: {ex.ToString()}";
         this.logger.LogError(lastError);
-        throw;
       }
 
       return null;
@@ -84,7 +84,6 @@ namespace Logistics.DAL
            city.Location[0],
            city.Location[1]
         }));
-      // Todo use projection and include only city name 
       try
       {
         // Created legacy 2d index for 'position', location and courier -> db.cities.createIndex({'position': '2d'})
@@ -95,15 +94,13 @@ namespace Logistics.DAL
           var cityModel = BsonSerializer.Deserialize<City>(cityDto);
           nearestCitiesSorted.Add(cityModel);
         }
-
-        return nearestCitiesSorted;
       }
       catch (MongoException ex)
       {
         lastError = $"Failed to fetch all the cities. Exception: {ex.ToString()}";
         this.logger.LogError(lastError);
-        throw;
       }
+      return nearestCitiesSorted;
     }
 
     public string GetLastError()

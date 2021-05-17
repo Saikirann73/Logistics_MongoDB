@@ -37,8 +37,6 @@ namespace Logistics.Controllers
     /// <summary>
     /// Fetch plane by ID
     /// </summary>
-    /// <param name="Id"></param>
-    /// <returns></returns>
     [HttpGet("{id}")]
     public async Task<IActionResult> GetPlanesById(string Id)
     {
@@ -54,11 +52,6 @@ namespace Logistics.Controllers
     /// <summary>
     /// Update location, heading, and landed for a plane
     /// </summary>
-    /// <param name="latitude"></param>
-    /// <param name="longitude"></param>
-    /// <param name="heading"></param>
-    /// <param name="city"></param>
-    /// <returns></returns>
     [HttpPut("{id}/location/{location}/{heading}/{city}")]
     public async Task<IActionResult> UpdatePlaneLocationAndLanding(string id, string location, float heading, string city)
     {
@@ -89,10 +82,6 @@ namespace Logistics.Controllers
     /// <summary>
     /// Update location and heading for a plane
     /// </summary>
-    /// <param name="id"></param>
-    /// <param name="location"></param>
-    /// <param name="heading"></param>
-    /// <returns></returns>
     [HttpPut("{id}/location/{location}/{heading}")]
     public async Task<IActionResult> UpdatePlaneLocation(string id, string location, float heading)
     {
@@ -116,10 +105,8 @@ namespace Logistics.Controllers
     }
 
     /// <summary>
-    /// Add a city to a Plane's Route
+    /// Add a city to a Plane's Route if not present
     /// </summary>
-    /// <param name="city"></param>
-    /// <returns></returns>
     [HttpPost("{id}/route/{city}")]
     public async Task<IActionResult> AddPlaneRoute(string id, string city)
     {
@@ -140,8 +127,6 @@ namespace Logistics.Controllers
     /// <summary>
     /// Replace a Plane's Route with a single city
     /// </summary>
-    /// <param name="city"></param>
-    /// <returns></returns>
     [HttpPut("{id}/route/{city}")]
     public async Task<IActionResult> UpdatePlaneRoute(string id, string city)
     {
@@ -163,7 +148,6 @@ namespace Logistics.Controllers
     /// <summary>
     /// Remove a city to a Plane's Route
     /// </summary>
-    /// <returns></returns>
     [HttpDelete("{id}/route/destination")]
     public async Task<IActionResult> RemoveFirstPlaneRoute(string id)
     {

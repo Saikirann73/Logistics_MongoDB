@@ -55,7 +55,6 @@ namespace Logistics.DAL
       {
         lastError = $"Failed to fetch the cargoes at the location: {location}.Exception: {ex.ToString()}";
         this.logger.LogError(lastError);
-        throw;
       }
 
       return cargos.ToList();
