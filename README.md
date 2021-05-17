@@ -1,16 +1,16 @@
-Instructions to setup the dot net project
+# Instructions to setup the dot net project <br />
 1. Clone the git repo : https://github.com/Saikirann73/Logistics_MongoDB
 2. Install dot net core sdk 3.1 or above
 3. From terminal navigate to “Binaries” folder
 4. Run the command “dotnet Logistics.dll” which runs the APIs on http://localhost:5000
 5. Run the test harness and UI from ‘python’ folder.
 
-Indexes created
-db.cities.createIndex({'position': '2d'})
-db.cargos.createIndex({status:1,location:1,courier:1})
-db.cargos.createIndex({duration:1}, { sparse: true })
+# Indexes created <br />
+db.cities.createIndex({'position': '2d'}) <br />
+db.cargos.createIndex({status:1,location:1,courier:1}) <br />
+db.cargos.createIndex({duration:1}, { sparse: true }) <br />
 
-Points considered during the development
+# Points considered during the development <br />
 1.	Data Access Layers are stateless and the instantiation will happen only once during the application startup.
 2.	No POCO/Model classes used to access the MongoDB SDK methods. The POCO/Models used only for converting from BSON Documents and pass to UI. 
 3.	Used thread safe locks for saving the Cargo tracking history.
