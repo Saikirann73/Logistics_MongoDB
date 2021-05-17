@@ -5,7 +5,7 @@ Instructions to setup the dot net project
 4. Run the command “dotnet Logistics.dll” which runs the APIs on http://localhost:5000
 5. Run the test harness and UI from ‘python’ folder.
 
-Indexes created:
+Indexes created
 db.cities.createIndex({'position': '2d'})
 db.cargos.createIndex({status:1,location:1,courier:1})
 db.cargos.createIndex({duration:1}, { sparse: true })
