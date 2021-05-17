@@ -73,6 +73,7 @@ namespace Logistics
             if (nearestRegionalPlane == null)
             {
               this.logger.LogWarning($"Could not find any nearest plane to pick the cargo: {newCargo.Id}");
+              await AssignToBackupPlane(newCargo, allPlanes);
               return;
             }
             await ValidateDestination(newCargo, allPlanes, nearestRegionalPlane);
@@ -197,10 +198,11 @@ namespace Logistics
         return;
       }
       var nearestCitiesToDestination = await this.citiesDAL.FetchNearestCities(cargo.CourierDestination);
-      var planesWithDestinationRoute = allPlanes.Where(x => x.Route.Contains(cargo.Destination));
+      var planesWithSourceRoute = allPlanes.Where(x => x.Route.Contains(cargo.Location));
+      Plane planeToAssign = null;
       foreach (var nearestCity in nearestCitiesToDestination)
       {
-        Plane planeToAssign = planesWithDestinationRoute?.FirstOrDefault(x => x.Route.Contains(nearestCity.Name));
+        planeToAssign = planesWithSourceRoute?.FirstOrDefault(x => x.Route.Contains(nearestCity.Name));
         if (planeToAssign != null && planeToAssign.Callsign != cargo.Location)
         {
           this.logger.LogInformation($"Assigning the cargo : {cargo.Id} to the plane: {planeToAssign.Callsign} and the destination has been set to {nearestCity.Name}");
@@ -212,6 +214,28 @@ namespace Logistics
                                                   DateTime.UtcNow);
           break;
         }
+      }
+
+      if (planeToAssign == null)
+      {
+        this.logger.LogWarning($"Could not find any nearest plane for the cargo: {cargo.Id}. So assigning to back up flight");
+        await AssignToBackupPlane(cargo, allPlanes);
+      }
+    }
+
+    private async Task AssignToBackupPlane(Cargo cargo, List<Plane> allPlanes)
+    {
+      var backupFlight = allPlanes.FirstOrDefault(x => x.PlaneType.ToLower() == PlanesConstants.PlaneTypeBackup.ToLower());
+      if (backupFlight != null)
+      {
+        await this.cargoDAL.UpdateCargoRouteInfo(cargo.Id, cargo.Destination, CargoConstants.CargoTransitTypeBackup, backupFlight.Callsign);
+        await this.planesDAL.AddPlaneRoute(backupFlight.Callsign, cargo.Location);
+        await this.planesDAL.AddPlaneRoute(backupFlight.Callsign, cargo.Destination);
+        await this.cargoDAL.AddToCourierHistory(cargo.Id,
+                                                 CargoConstants.InProgress,
+                                                 backupFlight.Callsign,
+                                                 cargo.Location,
+                                                 DateTime.UtcNow);
       }
     }
   }

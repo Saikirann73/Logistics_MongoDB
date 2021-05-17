@@ -26,8 +26,8 @@ namespace Logistics.DAL
     {
       this.mongoClient = mongoClient;
       this.mongodataBase = mongoClient.GetDatabase(CommonConstants.Database);
-      // var databaseWithWriteConcern = this.mongodataBase.WithWriteConcern(WriteConcern.WMajority).WithReadConcern(ReadConcern.Majority);
-      // this.cargoCollection = databaseWithWriteConcern.GetCollection<BsonDocument>(CargoConstants.CollectionName);
+      var databaseWithWriteConcern = this.mongodataBase.WithWriteConcern(WriteConcern.WMajority).WithReadConcern(ReadConcern.Majority);
+      this.cargoCollection = databaseWithWriteConcern.GetCollection<BsonDocument>(CargoConstants.CollectionName);
       this.cargoCollection = this.mongodataBase.GetCollection<BsonDocument>(CargoConstants.CollectionName);
       this.logger = logger;
     }
@@ -99,7 +99,7 @@ namespace Logistics.DAL
          {CargoConstants.TransitType, CargoConstants.CargoTransitTypeRegional},
          {CargoConstants.Received, new BsonDateTime(DateTime.Now).ToUniversalTime()}
        };
-      await this.cargoCollection.InsertOneAsync(cargo); // Todo: check about write concern
+      await this.cargoCollection.InsertOneAsync(cargo);
       var newCargo = await this.GetCargoById(cargo[CommonConstants.UnderScoreId].ToString());
       return newCargo;
     }
@@ -109,6 +109,7 @@ namespace Logistics.DAL
       var result = false;
       try
       {
+        // Compute Pattern :  Calculating the duration between the cargo created and delivered date time.
         var presentDateTime = new BsonDateTime(DateTime.Now).ToUniversalTime();
         var filter = Builders<BsonDocument>.Filter.Eq(CommonConstants.UnderScoreId, new ObjectId(cargo.Id));
         var duration = presentDateTime - cargo.Received;

@@ -26,7 +26,8 @@ namespace Logistics.DAL
     {
       this.mongoClient = mongoClient;
       this.mongodataBase = mongoClient.GetDatabase(CommonConstants.Database);
-      this.planesCollection = this.mongodataBase.GetCollection<BsonDocument>(PlanesConstants.CollectionName);
+      var databaseWithWriteConcern = this.mongodataBase.WithWriteConcern(WriteConcern.WMajority).WithReadConcern(ReadConcern.Majority);
+      this.planesCollection = databaseWithWriteConcern.GetCollection<BsonDocument>(PlanesConstants.CollectionName);
       this.logger = logger;
     }
 
@@ -162,10 +163,22 @@ namespace Logistics.DAL
       try
       {
         var plane = await this.GetPlaneById(id);
-        var updatedRoute = Enumerable.Range(1, plane.Route.Count).Select(i => plane.Route[i % plane.Route.Count]).ToArray();
         var filter = Builders<BsonDocument>.Filter.Eq(CommonConstants.UnderScoreId, id);
-        var update = Builders<BsonDocument>.Update
-                             .Set(PlanesConstants.Route, updatedRoute);
+        UpdateDefinition<BsonDocument> update;
+        if (plane.PlaneType.ToLower() == PlanesConstants.PlaneTypeBackup.ToLower())
+        {
+          // case: if backup plane, dont add the first route back to the end of array.
+          update = Builders<BsonDocument>.Update
+                                     .PopFirst(PlanesConstants.Route);
+        }
+        else
+        {
+          // case: if not backup plane, add the first route back to the end of array for circular paths.
+          var updatedRoute = Enumerable.Range(1, plane.Route.Count).Select(i => plane.Route[i % plane.Route.Count]).ToArray();
+          update = Builders<BsonDocument>.Update
+                               .Set(PlanesConstants.Route, updatedRoute);
+        }
+
         var updatedPlaneResult = await this.planesCollection.UpdateOneAsync(filter, update);
         result = updatedPlaneResult.IsAcknowledged;
       }

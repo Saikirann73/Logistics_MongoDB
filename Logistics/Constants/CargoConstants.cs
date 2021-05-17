@@ -16,6 +16,7 @@ namespace Logistics.Constants
     public const string TransitType = "transitType";
     public const string CargoTransitTypeRegional = "Regional";
     public const string CargoTransitTypeInternational = "International";
+    public const string CargoTransitTypeBackup = "Backup";
     public const string Duration = "duration";
     public const string CourierTrackingHistory = "courierTrackingHistory";
     public const string Plane = "assignedPlane";

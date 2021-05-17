@@ -19,7 +19,6 @@ namespace Logistics
 {
   public class Startup
   {
-    private const string connectionString = "mongodb+srv://saikirann73:kiran9009@cluster0.sxadq.mongodb.net";
     public Startup(IConfiguration configuration)
     {
       Configuration = configuration;
@@ -38,7 +37,7 @@ namespace Logistics
                .AllowAnyMethod()
                .AllowAnyHeader();
       }));
-      services.AddSingleton<IMongoClient>(x => { return new MongoClient(connectionString); });
+      services.AddSingleton<IMongoClient>(x => { return new MongoClient(Configuration["MongoDb-Connection-String"]); });
       services.AddSingleton<ICitiesDAL, CitiesDAL>();
       services.AddSingleton<IPlanesDAL, PlanesDAL>();
       services.AddSingleton<ICargoDAL, CargoDAL>();

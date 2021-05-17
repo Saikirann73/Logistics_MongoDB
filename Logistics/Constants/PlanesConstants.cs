@@ -12,5 +12,6 @@ namespace Logistics.Constants
         public const string PlaneType = "planeType";
         public const string PlaneTypeRegional = "Regional";
         public const string PlaneTypeInternational = "International";
+        public const string PlaneTypeBackup = "Backup";
     }
 }
