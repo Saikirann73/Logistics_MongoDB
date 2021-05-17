@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,6 +12,7 @@ using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
@@ -51,6 +53,13 @@ namespace Logistics
       {
         app.UseDeveloperExceptionPage();
       }
+      app.UseFileServer(new FileServerOptions()
+      {
+        EnableDefaultFiles = true,
+        FileProvider = new PhysicalFileProvider(Path.Combine(Directory.GetCurrentDirectory(), "static")),
+        RequestPath = "/static"
+      });
+      app.UseStaticFiles();
 
       // Enable middleware to serve generated Swagger as a JSON endpoint.
       app.UseSwagger();
