@@ -66,6 +66,7 @@ namespace Logistics
           }
           try
           {
+            Thread.Sleep(2000);
             var newCargo = BsonSerializer.Deserialize<Cargo>(change.FullDocument);
             this.logger.LogInformation($"Got a new cargo : {newCargo.Id} from source: {newCargo.CourierSource} to destination: {newCargo.CourierDestination}");
             var allPlanes = await this.planesDAL.GetPlanes();
