@@ -10,11 +10,14 @@
 8. Run the test harness from ‘python’ folder.
 ```
 # Indexes created <br />
+The following indexes are already part of the provided mongodump
 ```sh
 db.cities.createIndex({'position': '2d'})
 db.cargos.createIndex({status:1,location:1})
 db.cargos.createIndex({duration:1}, { sparse: true })
 ```
+Note: 
+Unit test 'Delivered cargo still visible' will fail, because i am not marking a cargo as delivered unless it is the final destination. Please skip this UT to proceed with the test harness
 
 # Points considered during the development <br />
 1.	Data Access Layers are stateless and the instantiation will happen only once during the application startup.
