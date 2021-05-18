@@ -4,16 +4,16 @@
 2. Install dot net core sdk 3.1 or above
 3. From terminal navigate to “Binaries” folder
 4. Set the mongodb connection string in the 'Logistics/appsettings.json' file
-5. Restore the mongodump from the folder "Binaries/MongoDump" to the mongodb cluster
+5. Restore the mongodump from the folder "Binaries/MongoDump" to the mongodb cluster with the database name 'logistics'.
 6. Run the command “dotnet Logistics.dll” which runs the APIs and UI
 7. Access the url https://localhost:5001/static/index.html to see the UI 
 8. Run the test harness from ‘python’ folder.
 ```
 # Indexes created <br />
 ```sh
-db.cities.createIndex({'position': '2d'}) <br />
-db.cargos.createIndex({status:1,location:1}) <br />
-db.cargos.createIndex({duration:1}, { sparse: true }) <br />
+db.cities.createIndex({'position': '2d'})
+db.cargos.createIndex({status:1,location:1})
+db.cargos.createIndex({duration:1}, { sparse: true })
 ```
 
 # Points considered during the development <br />
