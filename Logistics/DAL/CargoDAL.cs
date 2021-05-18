@@ -57,7 +57,7 @@ namespace Logistics.DAL
         this.logger.LogError(lastError);
       }
 
-      return cargos.ToList();
+      return cargos.OrderBy(x => x.Id).ToList();
     }
 
     public async Task<Cargo> GetCargoById(string id)

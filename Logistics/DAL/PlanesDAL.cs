@@ -174,19 +174,8 @@ namespace Logistics.DAL
         var plane = await this.GetPlaneById(id);
         var filter = Builders<BsonDocument>.Filter.Eq(CommonConstants.UnderScoreId, id);
         UpdateDefinition<BsonDocument> update;
-        if (plane.PlaneType.ToLower() == PlanesConstants.PlaneTypeBackup.ToLower())
-        {
-          // case: if backup plane, dont add the first route back to the end of array.
-          update = Builders<BsonDocument>.Update
-                                     .PopFirst(PlanesConstants.Route);
-        }
-        else
-        {
-          // case: if not backup plane, add the first route back to the end of array for circular paths.
-          var updatedRoute = Enumerable.Range(1, plane.Route.Count).Select(i => plane.Route[i % plane.Route.Count]).ToArray();
-          update = Builders<BsonDocument>.Update
-                               .Set(PlanesConstants.Route, updatedRoute);
-        }
+        update = Builders<BsonDocument>.Update
+                                   .PopFirst(PlanesConstants.Route);
 
         var updatedPlaneResult = await this.planesCollection.UpdateOneAsync(filter, update);
         result = updatedPlaneResult.IsAcknowledged;

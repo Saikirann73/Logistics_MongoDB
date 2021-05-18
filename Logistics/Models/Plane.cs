@@ -27,5 +27,8 @@ namespace Logistics.Models
     
     [BsonElement(PlanesConstants.PlaneType)]
     public string PlaneType { get; set; }
+
+    [BsonElement(PlanesConstants.EligibleRoute)]
+    public List<string> EligibleRoute { get; set; }
   }
 }

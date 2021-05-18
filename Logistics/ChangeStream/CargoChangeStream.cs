@@ -73,7 +73,6 @@ namespace Logistics
             if (nearestRegionalPlane == null)
             {
               this.logger.LogWarning($"Could not find any nearest plane to pick the cargo: {newCargo.Id}");
-              await AssignToBackupPlane(newCargo, allPlanes);
               return;
             }
             await ValidateDestination(newCargo, allPlanes, nearestRegionalPlane);
@@ -109,23 +108,27 @@ namespace Logistics
 
     public Plane FetchNearestRegionalPlane(string sourceCity, List<Plane> allPlanes)
     {
-      var plane = allPlanes.FirstOrDefault(x => x.Route.Contains(sourceCity) && x.PlaneType.ToLower() == PlanesConstants.PlaneTypeRegional.ToLower());
+      var plane = allPlanes.FirstOrDefault(x => x.EligibleRoute.Contains(sourceCity) && x.PlaneType.ToLower() == PlanesConstants.PlaneTypeRegional.ToLower());
       return plane;
     }
 
     private async Task ValidateDestination(Cargo newCargo, List<Plane> allPlanes, Plane nearestRegionalPlane)
     {
-      if (nearestRegionalPlane.Route.Contains(newCargo.Destination))
+      if (nearestRegionalPlane.EligibleRoute.Contains(newCargo.Destination))
       {
         // case: The created courier is in the same routes of the plane
         this.logger.LogInformation($"Assigning the cargo : {newCargo.Id} to the plane: {nearestRegionalPlane.Callsign} and the destination is  {newCargo.Destination}");
         await this.cargoDAL.UpdateCargoCourier(newCargo.Id, nearestRegionalPlane.Callsign);
+        await this.planesDAL.AddPlaneRoute(nearestRegionalPlane.Callsign, newCargo.Location);
+        await this.planesDAL.AddPlaneRoute(nearestRegionalPlane.Callsign, newCargo.Destination);
       }
       else
       {
         // case: The created courier is an international package, so assigning to hub
         this.logger.LogInformation($"Assigning the cargo : {newCargo.Id} to the plane: {nearestRegionalPlane.Callsign} and the destination has been set to {nearestRegionalPlane.Hub} hub");
         await this.cargoDAL.UpdateCargoRouteInfo(newCargo.Id, nearestRegionalPlane.Hub, CargoConstants.CargoTransitTypeRegional, nearestRegionalPlane.Callsign);
+        await this.planesDAL.AddPlaneRoute(nearestRegionalPlane.Callsign, newCargo.Location);
+        await this.planesDAL.AddPlaneRoute(nearestRegionalPlane.Callsign, nearestRegionalPlane.Hub);
       }
       await this.cargoDAL.AddToCourierHistory(newCargo.Id,
                                               CargoConstants.Created,
@@ -188,7 +191,8 @@ namespace Logistics
       var plane = allPlanes.FirstOrDefault(x => x.Callsign == cargo.Location);
       if (plane != null)
       {
-        // Currently the courier is in plane and not at any city.So dont assign anything here
+        // Currently the courier is in plane.
+        await this.planesDAL.AddPlaneRoute(cargo.Location, cargo.Destination);
         this.logger.LogInformation($"{plane.Callsign} has been picked up the cargo");
         await this.cargoDAL.AddToCourierHistory(cargo.Id,
                                                 CargoConstants.InProgress,
@@ -198,15 +202,17 @@ namespace Logistics
         return;
       }
       var nearestCitiesToDestination = await this.citiesDAL.FetchNearestCities(cargo.CourierDestination);
-      var planesWithSourceRoute = allPlanes.Where(x => x.Route.Contains(cargo.Location));
+      var planesWithSourceRoute = allPlanes.Where(x => x.EligibleRoute.Contains(cargo.Location));
       Plane planeToAssign = null;
       foreach (var nearestCity in nearestCitiesToDestination)
       {
-        planeToAssign = planesWithSourceRoute?.FirstOrDefault(x => x.Route.Contains(nearestCity.Name));
+        planeToAssign = planesWithSourceRoute?.FirstOrDefault(x => x.EligibleRoute.Contains(nearestCity.Name));
         if (planeToAssign != null && planeToAssign.Callsign != cargo.Location)
         {
           this.logger.LogInformation($"Assigning the cargo : {cargo.Id} to the plane: {planeToAssign.Callsign} and the destination has been set to {nearestCity.Name}");
           var result = await this.cargoDAL.UpdateCargoRouteInfo(cargo.Id, nearestCity.Name, CargoConstants.CargoTransitTypeInternational, planeToAssign.Callsign);
+          await this.planesDAL.AddPlaneRoute(planeToAssign.Callsign, cargo.Location);
+          await this.planesDAL.AddPlaneRoute(planeToAssign.Callsign, nearestCity.Name);
           if (result)
           {
             await this.cargoDAL.AddToCourierHistory(cargo.Id,
@@ -222,26 +228,6 @@ namespace Logistics
       if (planeToAssign == null)
       {
         this.logger.LogWarning($"Could not find any nearest plane for the cargo: {cargo.Id}. So assigning to back up flight");
-        await AssignToBackupPlane(cargo, allPlanes);
-      }
-    }
-
-    private async Task AssignToBackupPlane(Cargo cargo, List<Plane> allPlanes)
-    {
-      var backupFlight = allPlanes.FirstOrDefault(x => x.PlaneType.ToLower() == PlanesConstants.PlaneTypeBackup.ToLower());
-      if (backupFlight != null)
-      {
-        var result = await this.cargoDAL.UpdateCargoRouteInfo(cargo.Id, cargo.Destination, CargoConstants.CargoTransitTypeBackup, backupFlight.Callsign);
-        if (result)
-        {
-          await this.planesDAL.AddPlaneRoute(backupFlight.Callsign, cargo.Location);
-          await this.planesDAL.AddPlaneRoute(backupFlight.Callsign, cargo.Destination);
-          await this.cargoDAL.AddToCourierHistory(cargo.Id,
-                                                   CargoConstants.InProgress,
-                                                   backupFlight.Callsign,
-                                                   cargo.Location,
-                                                   DateTime.UtcNow);
-        }
       }
     }
   }
