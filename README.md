@@ -1,14 +1,19 @@
 # Instructions to setup the dot net project <br />
+```sh
 1. Clone the git repo : https://github.com/Saikirann73/Logistics_MongoDB
 2. Install dot net core sdk 3.1 or above
-3. From terminal navigate to “Binaries” folder
-4. Run the command “dotnet Logistics.dll” which runs the APIs on http://localhost:5000
-5. Run the test harness and UI from ‘python’ folder.
-
+3. From terminal navigate to [“Binaries”](https://github.com/Saikirann73/Logistics_MongoDB/tree/master/Binaries) folder
+4. Set the mongod connection string in the 'appsettings.json' [file](https://github.com/Saikirann73/Logistics_MongoDB/blob/master/Logistics/appsettings.json)
+5. Run the command “dotnet Logistics.dll” which runs the APIs and UI
+6. Access the url https://localhost:5001/static/index.html to see the UI 
+7. Run the test harness from ‘python’ folder.
+```
 # Indexes created <br />
+```sh
 db.cities.createIndex({'position': '2d'}) <br />
 db.cargos.createIndex({status:1,location:1}) <br />
 db.cargos.createIndex({duration:1}, { sparse: true }) <br />
+```
 
 # Points considered during the development <br />
 1.	Data Access Layers are stateless and the instantiation will happen only once during the application startup.
