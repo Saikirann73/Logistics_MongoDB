@@ -37,10 +37,10 @@ namespace Logistics.DAL
       var cargos = new ConcurrentBag<Cargo>();
       var builder = Builders<BsonDocument>.Filter;
       var filter = builder.Ne(CargoConstants.Status, CargoConstants.Delivered) &
-                   builder.Or(builder.Eq(CargoConstants.Location, location), builder.Eq(CargoConstants.Courier, location));
+                   builder.Eq(CargoConstants.Location, location);
       try
       {
-        // Created index with status, location and courier -> db.cargos.createIndex({status:1,location:1,courier:1})
+        // Created index with status, location and courier -> db.cargos.createIndex({status:1,location:1})
         var cursor = await this.cargoCollection.FindAsync(filter);
         var cargoDtos = cursor.ToList();
 

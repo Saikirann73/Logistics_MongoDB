@@ -33,17 +33,28 @@ namespace Logistics.DAL
 
     public async Task<List<Plane>> GetPlanes()
     {
-      var planeDtosCursor = await this.planesCollection.FindAsync(new BsonDocument());
-      var planeDtos = planeDtosCursor.ToList();
       var planes = new ConcurrentBag<Plane>();
-      // Parallelizing the serialization to make it faster.
-      Parallel.ForEach(planeDtos, planeDto =>
+      try
       {
-        var planeModel = BsonSerializer.Deserialize<Plane>(planeDto);
-        planes.Add(planeModel);
-      });
+        var planeDtosCursor = await this.planesCollection.FindAsync(new BsonDocument());
+        var planeDtos = planeDtosCursor.ToList();
+        // Parallelizing the serialization to make it faster.
+        Parallel.ForEach(planeDtos, planeDto =>
+        {
+          Plane planeModel = this.FetchPlane(planeDto);
+          if (planeModel != null)
+          {
+            planes.Add(planeModel);
+          }
+        });
+      }
+      catch (MongoException ex)
+      {
+        lastError = $"Failed to fetch all the planes.Exception: {ex.ToString()}";
+        this.logger.LogError(lastError);
+      }
 
-      return planes.ToList();
+      return planes.OrderBy(x => x.Callsign).ToList();
     }
 
     public async Task<Plane> GetPlaneById(string id)
@@ -57,16 +68,14 @@ namespace Logistics.DAL
         var planes = cursor.ToList();
         if (planes.Any())
         {
-          var planeModel = BsonSerializer.Deserialize<Plane>(planes.FirstOrDefault());
+          var planeModel = this.FetchPlane(planes.FirstOrDefault());
           return planeModel;
         }
-
       }
       catch (MongoException ex)
       {
         lastError = $"Failed to fetch the plane by id: {id}.Exception: {ex.ToString()}";
         this.logger.LogError(lastError);
-        throw;
       }
 
       return null;
@@ -194,6 +203,13 @@ namespace Logistics.DAL
     public string GetLastError()
     {
       return lastError;
+    }
+
+    private Plane FetchPlane(BsonDocument planeDto)
+    {
+      var planeModel = BsonSerializer.Deserialize<Plane>(planeDto);
+      planeModel.Heading = Convert.ToDecimal(string.Format("{0:N2}", planeDto.GetValue(PlanesConstants.Heading).ToDecimal()));
+      return planeModel;
     }
   }
 }

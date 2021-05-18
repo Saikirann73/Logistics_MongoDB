@@ -75,7 +75,6 @@ namespace Logistics.Controllers
 
     /// <summary>
     /// Set status field to 'Delivered'
-    /// Note: Also added the check to prevent cargo marked as delivered unless it is picked up by cargo from source and then gets to destination. This cause the failure of unit test case
     /// </summary>
     /// <returns></returns>
     [HttpPut("{cargoId}/delivered")]
@@ -85,16 +84,12 @@ namespace Logistics.Controllers
       var cargo = await this.cargoDAL.GetCargoById(cargoId);
       if (cargo.CourierDestination.Equals(cargo.Destination))
       {
-        // case: Which means the courier has finally reached its original destination
-        if (cargo.Location == cargo.Destination || cargo.Courier == null)
-        {
           // case: Which means the cargo is set to be delivered only if it gets delievered by the assigned cargo
           result = await this.cargoDAL.UpdateCargoStatusDuration(cargo, CargoConstants.Delivered);
           if (!result)
           {
             return new BadRequestObjectResult("Invalid CargoId");
           }
-        }
       }
 
       return new JsonResult(result);
